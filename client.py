@@ -8,9 +8,10 @@ class ChatApp(QWidget):
         super().__init__()
         screen = app.primaryScreen()
         size = screen.size()
-        self.width = size.width()
-        self.height = size.height()
-        self.setup_connection_window("Chat Application")
+        self.width = int(size.width()/2)
+        self.height = int(size.height()/2)
+        self.title = "Chat Application"
+        self.setup_connection_window()
 
     """
     Used to move the window to the center of the screen.
@@ -24,9 +25,9 @@ class ChatApp(QWidget):
     """
     Used to setup the GUI.
     """
-    def setup_connection_window(self, title):
-        self.setWindowTitle(title)
-        self.resize(self.width/2, self.height/2)   
+    def setup_connection_window(self):
+        self.setWindowTitle(self.title)
+        self.resize(self.width, self.height)   
         self.center_window()
 
         # Create components.
@@ -64,11 +65,32 @@ class ChatApp(QWidget):
 
         self.show()
 
-    def show_connected_window(self, checked):
-        None
+    def show_connected_window(self):
+        self.connected_window = ConnectedWindow(self.width, self.height, self.title)
+        self.connected_window.show()
+        self.hide()
+
+class ConnectedWindow(QWidget):
+    def __init__(self, width, height, title):
+        super().__init__()
+        self.width = width
+        self.height = height
+        self.title = title
+        self.setup_connected_window()
+
+    def center_window(self):
+        qtRectangle = self.frameGeometry()
+        centerPoint = QDesktopWidget().availableGeometry().center()
+        qtRectangle.moveCenter(centerPoint)
+        self.move(qtRectangle.topLeft())
+
+    def setup_connected_window(self):
+        self.setWindowTitle(self.title)
+        self.resize(self.width, self.height)   
+        self.center_window()
 
 
 if __name__ == '__main__':
-   app = QApplication(sys.argv)
-   ex = ChatApp()
-   sys.exit(app.exec_())
+    app = QApplication(sys.argv)
+    ex = ChatApp()
+    sys.exit(app.exec_())
