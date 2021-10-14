@@ -73,7 +73,7 @@ class ChatApp(QWidget):
 class ConnectedWindow(QWidget):
     def __init__(self, width, height, title):
         super().__init__()
-        self.width = width
+        self.width = int(width/2)
         self.height = height
         self.title = title
         self.setup_connected_window()
@@ -88,6 +88,36 @@ class ConnectedWindow(QWidget):
         self.setWindowTitle(self.title)
         self.resize(self.width, self.height)   
         self.center_window()
+
+        # Create components
+        self.connected_clients_label = QLabel('Connected Clients', self)
+        self.chat_rooms_label = QLabel('Chat rooms (Group chat)', self)
+        self.connected_clients_text_browser = QTextBrowser()
+        self.chat_rooms_text_browser = QTextBrowser()
+        self.one_to_one_chat_button = QPushButton('1:1 chat')
+        self.create_button = QPushButton('Create')
+        self.join_button = QPushButton('Join')
+        self.close_button = QPushButton('Close')
+
+        # Create layouts
+        self.connected_clients_layout = QHBoxLayout()
+        self.chat_rooms_layout = QHBoxLayout()
+        self.chat_rooms_button_layout = QVBoxLayout()
+        self.parent_layout = QVBoxLayout()
+
+        # Add components to layouts
+        self.connected_clients_layout.addWidget(self.connected_clients_text_browser)
+        self.connected_clients_layout.addWidget(self.one_to_one_chat_button)
+        self.chat_rooms_layout.addWidget(self.chat_rooms_text_browser)
+        self.chat_rooms_button_layout.addWidget(self.create_button)
+        self.chat_rooms_button_layout.addWidget(self.join_button)
+        self.chat_rooms_layout.addLayout(self.chat_rooms_button_layout)
+        self.parent_layout.addWidget(self.connected_clients_label)
+        self.parent_layout.addLayout(self.connected_clients_layout)
+        self.parent_layout.addWidget(self.chat_rooms_label)
+        self.parent_layout.addLayout(self.chat_rooms_layout)
+        self.parent_layout.addWidget(self.close_button)
+        self.setLayout(self.parent_layout)
 
 
 if __name__ == '__main__':
