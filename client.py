@@ -22,21 +22,11 @@ class ChatApp(QWidget):
         self.setup_connection_window()
 
     """
-    Used to move the window to the center of the screen.
-    """
-    def center_window(self):
-        qtRectangle = self.frameGeometry()
-        centerPoint = QDesktopWidget().availableGeometry().center()
-        qtRectangle.moveCenter(centerPoint)
-        self.move(qtRectangle.topLeft())
-
-    """
     Used to setup the GUI.
     """
     def setup_connection_window(self):
         self.setWindowTitle(self.title)
         self.resize(self.width, self.height)   
-        self.center_window()
 
         # Create components.
         self.ip_address_label = QLabel('IP Address', self)
@@ -133,8 +123,7 @@ class ConnectedClientsWorker(QObject):
 
     def run(self):
         """Long-running task."""
-        while self.connected:   
-            print("connected")     
+        while self.connected:       
             readable, writeable, exceptional = select.select([self.sock], [], [])
             for sock in readable:
                 if sock == self.sock:
@@ -192,21 +181,11 @@ class MenuWindow(QWidget):
         self.group_chat_room_window = GroupChatRoomWindow(self.width, self.height, self.title, self)
 
     """
-    Used to move the window to the center of the screen.
-    """
-    def center_window(self):
-        qtRectangle = self.frameGeometry()
-        centerPoint = QDesktopWidget().availableGeometry().center()
-        qtRectangle.moveCenter(centerPoint)
-        self.move(qtRectangle.topLeft())
-
-    """
     Used to setup the GUI.
     """
     def setup_menu_window(self):
         self.setWindowTitle(self.title)
         self.resize(self.width, self.height)   
-        self.center_window()
 
         # Create components
         self.connected_clients_label = QLabel('Connected Clients', self)
@@ -313,21 +292,11 @@ class ChatRoomWindow(QWidget):
         self.setup_chat_room_window()
 
     """
-    Used to move the window to the center of the screen.
-    """
-    def center_window(self):
-        qtRectangle = self.frameGeometry()
-        centerPoint = QDesktopWidget().availableGeometry().center()
-        qtRectangle.moveCenter(centerPoint)
-        self.move(qtRectangle.topLeft())
-
-    """
     Used to setup the GUI.
     """
     def setup_chat_room_window(self):
         self.setWindowTitle(self.title)
         self.resize(self.width, self.height)   
-        self.center_window()
         self.setup_chat_room_layout()
         self.setLayout(self.chat_layout)
 
@@ -390,7 +359,6 @@ class GroupChatRoomWindow(ChatRoomWindow):
         self.width = int(self.width * 1.5)
         self.setWindowTitle(self.title)
         self.resize(self.width, self.height)   
-        self.center_window()
         self.setup_group_chat_room_layout()
         self.setLayout(self.group_chat_layout)
 
@@ -453,21 +421,11 @@ class InviteWindow(QWidget):
         self.setup_invite_window()
 
     """
-    Used to move the window to the center of the screen.
-    """
-    def center_window(self):
-        qtRectangle = self.frameGeometry()
-        centerPoint = QDesktopWidget().availableGeometry().center()
-        qtRectangle.moveCenter(centerPoint)
-        self.move(qtRectangle.topLeft())
-
-    """
     Used to setup the GUI
     """
     def setup_invite_window(self):
         self.setWindowTitle(self.title)
         self.resize(self.width, self.height)   
-        self.center_window()
 
         # Create components
         self.connected_clients_label = QLabel("Connected Clients", self)

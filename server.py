@@ -116,7 +116,7 @@ class ChatServer(object):
                         data = receive(sock)
                         if data == "END":
                             send(sock, "END")
-                            print("trying to end the client.")
+                            print("trying to end the client.")   
                         else:
                             # When a user goes offline.
                             print(f'Chat server: {sock.fileno()} hung up')
@@ -125,6 +125,11 @@ class ChatServer(object):
                             inputs.remove(sock)
                             self.outputs.remove(sock)
                             self.clientmap.pop(sock)
+                            # Update client list for other clients.
+                            for output in self.outputs:
+                                if output != sock:
+                                    send(output, "CLIENT_LIST") 
+                                    self.send_connected_clients(output)
                     except socket.error as e:
                         # Remove
                         self.clientmap.pop(sock)
