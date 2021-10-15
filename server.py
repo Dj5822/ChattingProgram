@@ -86,8 +86,10 @@ class ChatServer(object):
                             print("success")
                             connected_client_name = connected_client_name + " (me)"
 
-                        if connected_time.seconds < 60:
+                        if connected_time.seconds < 3:
                             time_message = "now"
+                        elif connected_time.seconds < 60:
+                            time_message = str(round(connected_time.seconds)) + " sec ago"
                         elif connected_time.seconds < 60*60:
                             time_message = str(round(connected_time.seconds/60)) + " min ago"
                         else:
