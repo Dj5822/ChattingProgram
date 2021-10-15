@@ -1,8 +1,10 @@
 import sys
 import socket
 import select
-import threading
+import time
+import typing
 from PyQt5.QtWidgets import *
+from PyQt5.QtCore import QObject, QThread, pyqtSignal
 from utils import *
 
 """
@@ -87,27 +89,16 @@ class ChatApp(QWidget):
 
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.sock.connect((self.host, self.port))
-            self.connected = True
-
-            # Get initial clients list.
-            send(self.sock, 'NAME: ' + self.name)
-            clients_list = receive_clients(self.sock)
-
-            self.menu_window = MenuWindow(self.width, self.height, self.title, self)
-            self.menu_window.update_connected_clients(clients_list)
-            self.menu_window.update_chat_rooms_list(["test chat room 1", "test chat room 2"])
-            
+            self.menu_window = MenuWindow(self.width, self.height, self.title, self)            
             self.show_menu_window()
 
         except socket.error as e:
             self.show_error_dialog(f'Failed to connect to chat server @ port {self.port}')
         except NameError:
             self.show_error_dialog("There was a name error.")
-        except Exception:
-            self.show_error_dialog("There was a connection error.")
-
-    def update_window(self):
-        send(self.sock, 'GET_CONNECTED_CLIENTS: ' + self.name)
+        except Exception as e:
+            print(e)
+            self.show_error_dialog("There was a connection error.")        
 
         
     """
@@ -130,6 +121,42 @@ class ChatApp(QWidget):
     def close_program(self):
         quit()
 
+
+class ConnectedClientsWorker(QObject):
+    finished = pyqtSignal()
+
+    def __init__(self, sock, menu_window, parent=None):
+        super().__init__(parent=parent)
+        self.sock = sock
+        self.menu_window = menu_window
+        self.connected = True
+
+    def run(self):
+        """Long-running task."""
+        while self.connected:   
+            print("connected")     
+            readable, writeable, exceptional = select.select([self.sock], [], [])
+            for sock in readable:
+                if sock == self.sock:
+                    data = receive(self.sock)
+                    # If the server shuts down
+                    if not data:
+                        print('Client shutting down.')
+                        self.connected = False
+                        break
+                    elif data == "CLIENT_LIST":
+                        clients_list = receive_clients(self.sock)
+                        self.menu_window.update_connected_clients(clients_list)
+                    elif data == "END":
+                        print("terminating connection.")
+                        break
+        self.sock.close()
+        self.finished.emit()
+
+    def stop(self):
+        self.connected = False
+        send(self.sock, "END")     
+
 """
 The window that is shown after successfully connecting.
 """
@@ -142,6 +169,25 @@ class MenuWindow(QWidget):
         self.prev_window = prev_window
         self.sock = prev_window.sock
         self.setup_menu_window()
+
+        # Get initial clients list.
+        send(self.sock, 'NAME: ' + self.prev_window.name)
+        receive(self.sock)
+        clients_list = receive_clients(self.sock)
+
+        self.update_connected_clients(clients_list)
+        self.update_chat_rooms_list(["test chat room 1", "test chat room 2"])
+        
+        self.update_thread = QThread()
+        self.update_worker = ConnectedClientsWorker(self.sock, self)
+        self.update_worker.moveToThread(self.update_thread)
+        self.update_thread.started.connect(self.update_worker.run)
+        self.update_worker.finished.connect(self.update_thread.quit)
+        self.update_worker.finished.connect(self.update_worker.deleteLater)
+        self.update_thread.finished.connect(self.update_worker.stop)
+        self.update_thread.finished.connect(self.update_thread.deleteLater)
+        self.update_thread.start()
+
         self.chat_room_window = ChatRoomWindow(self.width, self.height, self.title, self)
         self.group_chat_room_window = GroupChatRoomWindow(self.width, self.height, self.title, self)
 
@@ -232,7 +278,7 @@ class MenuWindow(QWidget):
     Goes to the previous window.
     """
     def show_connection_window(self):
-        self.sock.close()
+        self.update_worker.stop()
         self.prev_window.show()
         self.hide()
 

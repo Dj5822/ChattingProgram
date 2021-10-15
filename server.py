@@ -56,7 +56,7 @@ class ChatServer(object):
             if client_data[1] == self.get_client_name(client):
                 connected_client_name = connected_client_name + " (me)"
 
-            if connected_time.seconds < 3:
+            if connected_time.seconds < 1:
                 time_message = "now"
             elif connected_time.seconds < 60:
                 time_message = str(round(connected_time.seconds)) + " sec ago"
@@ -98,8 +98,10 @@ class ChatServer(object):
                     self.clientmap[client] = (address, cname, time)
                     self.outputs.append(client)
 
-                    # Send clients list to the connecting client.
-                    self.send_connected_clients(client)                   
+                    # Send clients list to all the connected clients.
+                    for output in self.outputs:
+                        send(output, "CLIENT_LIST") 
+                        self.send_connected_clients(output)              
 
                 elif sock == sys.stdin:
                     # handles standard input from terminal.
@@ -109,20 +111,25 @@ class ChatServer(object):
                     elif cmd == 'quit':
                         running = False
                 else:
-                    # handle all other sockets
-                    data = receive(sock)
-                    if data:
-                        data_list = data.split(":")
-                        if data_list[0] == "GET_CONNECTED_CLIENTS":
-                            self.send_connected_clients(client)
-                    else:
-                        # When a user goes offline.
-                        print(f'Chat server: {sock.fileno()} hung up')
-                        self.clients -= 1
-                        sock.close()
+                    try:
+                        # handle all other sockets
+                        data = receive(sock)
+                        if data == "END":
+                            send(sock, "END")
+                            print("trying to end the client.")
+                        else:
+                            # When a user goes offline.
+                            print(f'Chat server: {sock.fileno()} hung up')
+                            self.clients -= 1
+                            sock.close()
+                            inputs.remove(sock)
+                            self.outputs.remove(sock)
+                            self.clientmap.pop(sock)
+                    except socket.error as e:
+                        # Remove
+                        self.clientmap.pop(sock)
                         inputs.remove(sock)
                         self.outputs.remove(sock)
-                        self.clientmap.pop(sock)
 
         print("closing")
         self.server.close()
