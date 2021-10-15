@@ -5,6 +5,7 @@ import signal
 import argparse
 
 from utils import *
+from datetime import datetime
 
 SERVER_HOST = 'localhost'
 
@@ -15,6 +16,7 @@ class ChatServer(object):
     def __init__(self, port, backlog=5):
         self.clients = 0
         self.clientmap = {}
+        self.chatroom_map = {}
         self.outputs = []  # list output sockets
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -25,6 +27,7 @@ class ChatServer(object):
 
         print(f'Server listening to port: {port} ...')
 
+    # Used to close the server.
     def sighandler(self, signum, frame):
         """ Clean up client outputs"""
         print('Shutting down server...')
@@ -35,6 +38,7 @@ class ChatServer(object):
 
         self.server.close()
 
+    # Gets the name of a specific client.
     def get_client_name(self, client):
         """ Return the name of the client """
         info = self.clientmap[client]
@@ -53,30 +57,47 @@ class ChatServer(object):
                 break
 
             for sock in readable:
-                sys.stdout.flush()
+                """
+                When a new client connects to the server.
+                """
                 if sock == self.server:
                     # handle the server socket
                     client, address = self.server.accept()
-                    print(
-                        f'Chat server: got connection {client.fileno()} from {address}')
+                    print(f'Chat server: got connection {client.fileno()} from {address}')
+
                     # Read the login name
                     cname = receive(client).split('NAME: ')[1]
+                    time = datetime.now()
 
                     # Compute client name and send back
                     self.clients += 1
-                    send(client, f'CLIENT: {str(address[0])}')
                     inputs.append(client)
-
-                    self.clientmap[client] = (address, cname)
-                    # Send joining information to other clients
-                    msg = f'\n(Connected: New client ({self.clients}) from {self.get_client_name(client)})'
-                    for output in self.outputs:
-                        send(output, msg)
+                    self.clientmap[client] = (address, cname, time)
                     self.outputs.append(client)
 
+                    # Send clients list to the connecting client.
+                    connected_clients_list = []
+                    for client_data in self.clientmap.values():
+                        connected_time = datetime.now() - client_data[2]
+                        connected_client_name = client_data[1]
+                        time_message = ""
+                        
+                        if client_data[0] == address and client_data[2] == time:
+                            print("success")
+                            connected_client_name = connected_client_name + " (me)"
+
+                        if connected_time.seconds < 60:
+                            time_message = "now"
+                        elif connected_time.seconds < 60*60:
+                            time_message = str(round(connected_time.seconds/60)) + " min ago"
+                        else:
+                            time_message = str(round(connected_time.seconds/(60*60))) + " hour ago"
+
+                        connected_clients_list.append(connected_client_name + " (" + time_message + ")")
+                    send_clients(client, connected_clients_list)                    
+
                 elif sock == sys.stdin:
-                    # didn't test sys.stdin on windows system
-                    # handle standard input
+                    # handles standard input from terminal.
                     cmd = sys.stdin.readline().strip()
                     if cmd == 'list':
                         print(self.clientmap.values())
@@ -84,38 +105,17 @@ class ChatServer(object):
                         running = False
                 else:
                     # handle all other sockets
-                    try:
-                        data = receive(sock)
-                        if data == "GET_ALL_CLIENTS":
-                            print("sending a list of clients to '{}'".format(self.get_client_name(sock)))
-                            client_name_list = []
-                            for client_data in self.clientmap.values():
-                                client_name_list.append(client_data[1])
-                            send_clients(sock, client_name_list)
-                        elif data:
-                            # Send as new client's message...
-                            msg = f'\n#[{self.get_client_name(sock)}]>> {data}'
-
-                            # Send data to all except ourself
-                            for output in self.outputs:
-                                if output != sock:
-                                    send(output, msg)
-                        else:
-                            print(f'Chat server: {sock.fileno()} hung up')
-                            self.clients -= 1
-                            sock.close()
-                            inputs.remove(sock)
-                            self.outputs.remove(sock)
-                            # Sending client leaving information to others
-                            msg = f'\n(Now hung up: Client from {self.get_client_name(sock)})'
-                            self.clientmap.pop(sock)
-
-                            for output in self.outputs:
-                                send(output, msg)
-                    except socket.error as e:
-                        # Remove
+                    data = receive(sock)
+                    if data:
+                        None
+                    else:
+                        # When a user goes offline.
+                        print(f'Chat server: {sock.fileno()} hung up')
+                        self.clients -= 1
+                        sock.close()
                         inputs.remove(sock)
                         self.outputs.remove(sock)
+                        self.clientmap.pop(sock)
 
         print("closing")
         self.server.close()

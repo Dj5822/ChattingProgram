@@ -18,7 +18,6 @@ class ChatApp(QWidget):
         self.height = int(size.height()/2)
         self.title = "Chat Application"
         self.setup_connection_window()
-        self.menu_window = MenuWindow(self.width, self.height, self.title, self)
 
     """
     Used to move the window to the center of the screen.
@@ -90,28 +89,22 @@ class ChatApp(QWidget):
             self.sock.connect((self.host, self.port))
             self.connected = True
 
-            # Sends the client name
+            # Get initial clients list.
             send(self.sock, 'NAME: ' + self.name)
-            data = receive(self.sock)
+            clients_list = receive_clients(self.sock)
+
+            self.menu_window = MenuWindow(self.width, self.height, self.title, self)
+            self.menu_window.update_connected_clients(clients_list)
+            self.menu_window.update_chat_rooms_list(["test chat room 1", "test chat room 2"])
             
-            # Contains client address, set it
-            client = data.split('CLIENT: ')[1]
-
             self.show_menu_window()
-
-            threading.Thread(target=self.run).start()
 
         except socket.error as e:
             self.show_error_dialog(f'Failed to connect to chat server @ port {self.port}')
         except NameError:
             self.show_error_dialog("There was a name error.")
         except Exception:
-            self.show_error_dialog("There was a connection error.")
-
-    def run(self):
-        self.menu_window.update_connected_clients(["test user 1", "test user 2"])
-        self.menu_window.update_chat_rooms_list(["test chat room 1", "test chat room 2"])
-        
+            self.show_error_dialog("There was a connection error.")        
         
     """
     Used to show a dialog
@@ -143,6 +136,7 @@ class MenuWindow(QWidget):
         self.height = height
         self.title = title
         self.prev_window = prev_window
+        self.sock = prev_window.sock
         self.setup_menu_window()
         self.chat_room_window = ChatRoomWindow(self.width, self.height, self.title, self)
         self.group_chat_room_window = GroupChatRoomWindow(self.width, self.height, self.title, self)
@@ -220,6 +214,7 @@ class MenuWindow(QWidget):
     Goes to the previous window.
     """
     def show_connection_window(self):
+        self.sock.close()
         self.prev_window.show()
         self.hide()
 
@@ -372,7 +367,7 @@ class GroupChatRoomWindow(ChatRoomWindow):
         self.title_label.setText(title)
         self.chat_text_browser.clear()
         self.members_list_widget.clear()
-        
+
         for message in message_list:
             self.chat_text_browser.append(message)
 
