@@ -24,6 +24,8 @@ def receive(channel):
     return pickle.loads(buf)[0]
 
 
+
+
 def send_clients(channel, clients):
     buffer = pickle.dumps(clients)
     value = socket.htonl(len(buffer))

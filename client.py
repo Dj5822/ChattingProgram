@@ -83,7 +83,7 @@ class ChatApp(QWidget):
 
             self.host = 'localhost'
             self.port = 9988
-            self.name = 'Steve'
+            self.name = self.nickname_textbox.text()
 
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.sock.connect((self.host, self.port))
@@ -104,7 +104,11 @@ class ChatApp(QWidget):
         except NameError:
             self.show_error_dialog("There was a name error.")
         except Exception:
-            self.show_error_dialog("There was a connection error.")        
+            self.show_error_dialog("There was a connection error.")
+
+    def update_window(self):
+        send(self.sock, 'GET_CONNECTED_CLIENTS: ' + self.name)
+
         
     """
     Used to show a dialog
@@ -198,9 +202,23 @@ class MenuWindow(QWidget):
     Goes to the one to one chat window.
     """
     def show_chat_window(self):
-        self.chat_room_window.load_data("Test title", ["Message 1", "Message 2"])
-        self.chat_room_window.show()
-        self.hide()
+        selectedUsers = self.connected_clients_list_widget.selectedItems()
+        if (len(selectedUsers) != 1):
+            self.show_error_dialog("Please selected a user from the list.")
+        elif selectedUsers[0].text().split("(")[1] == "me) ":
+            self.show_error_dialog("Please select a user other than yourself from the list.")
+        else:
+            target_user = selectedUsers[0].text().split(" (")[0]
+            self.chat_room_window.load_data(target_user)
+            self.chat_room_window.show()
+            self.hide()
+
+    """
+    Used to show a dialog
+    """
+    def show_error_dialog(self, message):
+        error_dialog = QErrorMessage(self)
+        error_dialog.showMessage(message)
 
     """
     Goes to group chat window.
@@ -244,6 +262,7 @@ class ChatRoomWindow(QWidget):
         self.width = width
         self.height = height
         self.title = title
+        self.sock = prev_window.sock
         self.prev_window = prev_window
         self.setup_chat_room_window()
 
@@ -302,9 +321,10 @@ class ChatRoomWindow(QWidget):
     """
     Loads the data for the chat room.
     """
-    def load_data(self, title, message_list):
-        self.title_label.setText(title)
+    def load_data(self, username):
+        self.title_label.setText("Chat with " + username)
         self.chat_text_browser.clear()
+        message_list = []
         for message in message_list:
             self.chat_text_browser.append(message)
 

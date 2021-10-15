@@ -45,6 +45,29 @@ class ChatServer(object):
         host, name = info[0][0], info[1]
         return '@'.join((name, host))
 
+    # Sends connected clients to the specific client.
+    def send_connected_clients(self, client):
+        connected_clients_list = []
+        for client_data in self.clientmap.values():
+            connected_time = datetime.now() - client_data[2]
+            connected_client_name = client_data[1]
+            time_message = ""
+
+            if client_data[1] == self.get_client_name(client):
+                connected_client_name = connected_client_name + " (me)"
+
+            if connected_time.seconds < 3:
+                time_message = "now"
+            elif connected_time.seconds < 60:
+                time_message = str(round(connected_time.seconds)) + " sec ago"
+            elif connected_time.seconds < 60*60:
+                time_message = str(round(connected_time.seconds/60)) + " min ago"
+            else:
+                time_message = str(round(connected_time.seconds/(60*60))) + " hour ago"
+
+            connected_clients_list.append(connected_client_name + " (" + time_message + ")")
+        send_clients(client, connected_clients_list)  
+
     def run(self):
         inputs = [self.server, sys.stdin]
         self.outputs = []
@@ -76,27 +99,7 @@ class ChatServer(object):
                     self.outputs.append(client)
 
                     # Send clients list to the connecting client.
-                    connected_clients_list = []
-                    for client_data in self.clientmap.values():
-                        connected_time = datetime.now() - client_data[2]
-                        connected_client_name = client_data[1]
-                        time_message = ""
-                        
-                        if client_data[0] == address and client_data[2] == time:
-                            print("success")
-                            connected_client_name = connected_client_name + " (me)"
-
-                        if connected_time.seconds < 3:
-                            time_message = "now"
-                        elif connected_time.seconds < 60:
-                            time_message = str(round(connected_time.seconds)) + " sec ago"
-                        elif connected_time.seconds < 60*60:
-                            time_message = str(round(connected_time.seconds/60)) + " min ago"
-                        else:
-                            time_message = str(round(connected_time.seconds/(60*60))) + " hour ago"
-
-                        connected_clients_list.append(connected_client_name + " (" + time_message + ")")
-                    send_clients(client, connected_clients_list)                    
+                    self.send_connected_clients(client)                   
 
                 elif sock == sys.stdin:
                     # handles standard input from terminal.
@@ -109,7 +112,9 @@ class ChatServer(object):
                     # handle all other sockets
                     data = receive(sock)
                     if data:
-                        None
+                        data_list = data.split(":")
+                        if data_list[0] == "GET_CONNECTED_CLIENTS":
+                            self.send_connected_clients(client)
                     else:
                         # When a user goes offline.
                         print(f'Chat server: {sock.fileno()} hung up')
