@@ -109,7 +109,8 @@ class ChatApp(QWidget):
             self.show_error_dialog("There was a connection error.")
 
     def run(self):
-        self.menu_window.update_connected_clients(["test"])
+        self.menu_window.update_connected_clients(["test user 1", "test user 2"])
+        self.menu_window.update_chat_rooms_list(["test chat room 1", "test chat room 2"])
         
     """
     Used to show a dialog
@@ -225,6 +226,13 @@ class MenuWindow(QWidget):
     def update_connected_clients(self, clients_list):
         for i in range(len(clients_list)):
             self.connected_clients_list_widget.insertItem(i, clients_list[i])
+
+    """
+    Updates the chat rooms list widget.
+    """
+    def update_chat_rooms_list(self, chat_rooms_list):
+        for i in range(len(chat_rooms_list)):
+            self.chat_rooms_list_widget.insertItem(i, chat_rooms_list[i])
 
 
 """
