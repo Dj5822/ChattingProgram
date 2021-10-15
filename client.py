@@ -112,6 +112,7 @@ class ChatApp(QWidget):
         self.menu_window.update_connected_clients(["test user 1", "test user 2"])
         self.menu_window.update_chat_rooms_list(["test chat room 1", "test chat room 2"])
         
+        
     """
     Used to show a dialog
     """
@@ -144,7 +145,7 @@ class MenuWindow(QWidget):
         self.prev_window = prev_window
         self.setup_menu_window()
         self.chat_room_window = ChatRoomWindow(self.width, self.height, self.title, self)
-        self.chat_room_window = GroupChatRoomWindow(self.width, self.height, self.title, self)
+        self.group_chat_room_window = GroupChatRoomWindow(self.width, self.height, self.title, self)
 
     """
     Used to move the window to the center of the screen.
@@ -203,6 +204,7 @@ class MenuWindow(QWidget):
     Goes to the one to one chat window.
     """
     def show_chat_window(self):
+        self.chat_room_window.load_data("Test title", ["Message 1", "Message 2"])
         self.chat_room_window.show()
         self.hide()
 
@@ -210,7 +212,8 @@ class MenuWindow(QWidget):
     Goes to group chat window.
     """
     def show_group_chat_window(self):
-        self.chat_room_window.show()
+        self.group_chat_room_window.load_data("Test title", ["Message 1", "Message 2"], ["Member 1", "Member 2"])
+        self.group_chat_room_window.show()
         self.hide()
 
     """
@@ -224,6 +227,7 @@ class MenuWindow(QWidget):
     Updates the connected clients list widget.
     """
     def update_connected_clients(self, clients_list):
+        self.connected_clients_list_widget.clear()
         for i in range(len(clients_list)):
             self.connected_clients_list_widget.insertItem(i, clients_list[i])
 
@@ -231,6 +235,7 @@ class MenuWindow(QWidget):
     Updates the chat rooms list widget.
     """
     def update_chat_rooms_list(self, chat_rooms_list):
+        self.chat_rooms_list_widget.clear()
         for i in range(len(chat_rooms_list)):
             self.chat_rooms_list_widget.insertItem(i, chat_rooms_list[i])
 
@@ -299,6 +304,16 @@ class ChatRoomWindow(QWidget):
         self.prev_window.show()
         self.hide()  
 
+    """
+    Loads the data for the chat room.
+    """
+    def load_data(self, title, message_list):
+        self.title_label.setText(title)
+        self.chat_text_browser.clear()
+        for message in message_list:
+            self.chat_text_browser.append(message)
+
+
 """
 The window that is shown after creating or joining a group chat.
 """
@@ -326,7 +341,7 @@ class GroupChatRoomWindow(ChatRoomWindow):
 
         # Create components
         self.members_label = QLabel('Members', self)
-        self.members_text_browser = QTextBrowser()
+        self.members_list_widget = QListWidget()
         self.invite_button = QPushButton('Invite')
 
         # Button functionality
@@ -338,7 +353,7 @@ class GroupChatRoomWindow(ChatRoomWindow):
 
         # Add components to layout
         self.members_layout.addWidget(self.members_label)
-        self.members_layout.addWidget(self.members_text_browser)
+        self.members_layout.addWidget(self.members_list_widget)
         self.members_layout.addWidget(self.invite_button)
         self.group_chat_layout.addLayout(self.chat_layout)
         self.group_chat_layout.addLayout(self.members_layout)
@@ -349,6 +364,20 @@ class GroupChatRoomWindow(ChatRoomWindow):
     def show_invite_window(self):
         self.invite_window.show()
         self.hide()
+
+    """
+    Loads the data for the chat room.
+    """
+    def load_data(self, title, message_list, members_list):
+        self.title_label.setText(title)
+        self.chat_text_browser.clear()
+        self.members_list_widget.clear()
+        
+        for message in message_list:
+            self.chat_text_browser.append(message)
+
+        for i in range(len(members_list)):
+            self.members_list_widget.insertItem(i, members_list[i])
 
 """
 The window that is shown after pressing the invite button.
