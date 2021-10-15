@@ -106,9 +106,9 @@ class ChatServer(object):
                             sock.close()
                             inputs.remove(sock)
                             self.outputs.remove(sock)
-
                             # Sending client leaving information to others
                             msg = f'\n(Now hung up: Client from {self.get_client_name(sock)})'
+                            self.clientmap.pop(sock)
 
                             for output in self.outputs:
                                 send(output, msg)

@@ -1,5 +1,7 @@
 import sys
 import socket
+import select
+import threading
 from PyQt5.QtWidgets import *
 from utils import *
 
@@ -85,15 +87,20 @@ class ChatApp(QWidget):
 
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.sock.connect((self.host, self.port))
+            self.connected = True
 
             # Sends the client name
             send(self.sock, 'NAME: ' + self.name)
             data = receive(self.sock)
             
             # Contains client address, set it
-            self.client = data.split('CLIENT: ')[1]
-        
+            client = data.split('CLIENT: ')[1]
+
+            self.menu_window = MenuWindow(self.width, self.height, self.title, self)
+
             self.show_menu_window()
+
+            threading.Thread(target=self.run).start()
         except socket.error as e:
             self.show_error_dialog(f'Failed to connect to chat server @ port {self.port}')
         except NameError:
@@ -101,6 +108,9 @@ class ChatApp(QWidget):
         except Exception:
             self.show_error_dialog("There was a connection error.")
 
+    def run(self):
+        self.menu_window.update_connected_clients(self.sock)
+        
     """
     Used to show a dialog
     """
@@ -112,7 +122,6 @@ class ChatApp(QWidget):
     Used to show the menu window after connecting successfully.
     """
     def show_menu_window(self):
-        self.menu_window = MenuWindow(self.width, self.height, self.title, self)
         self.menu_window.show()
         self.hide()
 
@@ -132,9 +141,6 @@ class MenuWindow(QWidget):
         self.height = height
         self.title = title
         self.prev_window = prev_window
-        self.host = prev_window.host
-        self.client = prev_window.client
-        self.name = prev_window.name
         self.sock = prev_window.sock
         self.setup_menu_window()
 
@@ -158,8 +164,8 @@ class MenuWindow(QWidget):
         # Create components
         self.connected_clients_label = QLabel('Connected Clients', self)
         self.chat_rooms_label = QLabel('Chat rooms (Group chat)', self)
-        self.connected_clients_text_browser = QTextBrowser()
-        self.chat_rooms_text_browser = QTextBrowser()
+        self.connected_clients_list_widget = QListWidget()
+        self.chat_rooms_list_widget = QListWidget()
         self.one_to_one_chat_button = QPushButton('1:1 chat')
         self.create_button = QPushButton('Create')
         self.join_button = QPushButton('Join')
@@ -178,9 +184,9 @@ class MenuWindow(QWidget):
         self.parent_layout = QVBoxLayout()
 
         # Add components to layouts
-        self.connected_clients_layout.addWidget(self.connected_clients_text_browser)
+        self.connected_clients_layout.addWidget(self.connected_clients_list_widget)
         self.connected_clients_layout.addWidget(self.one_to_one_chat_button)
-        self.chat_rooms_layout.addWidget(self.chat_rooms_text_browser)
+        self.chat_rooms_layout.addWidget(self.chat_rooms_list_widget)
         self.chat_rooms_button_layout.addWidget(self.create_button)
         self.chat_rooms_button_layout.addWidget(self.join_button)
         self.chat_rooms_layout.addLayout(self.chat_rooms_button_layout)
@@ -212,8 +218,19 @@ class MenuWindow(QWidget):
     """
     def show_connection_window(self):
         self.sock.close()
+        self.prev_window.connected = False
         self.prev_window.show()
         self.hide()
+
+    """
+    Updates the connected clients list widget.
+    """
+    def update_connected_clients(self, sock):
+        send(sock, "GET_ALL_CLIENTS")
+        data = receive_clients(sock)
+        for i in range(len(data)):
+            self.connected_clients_list_widget.insertItem(i, data[i])
+
 
 """
 The window that is shown after pressing 1:1 chat button.
