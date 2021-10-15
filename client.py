@@ -1,5 +1,7 @@
 import sys
+import socket
 from PyQt5.QtWidgets import *
+from utils import *
 
 """
 The first window that is shown at the start of the application.
@@ -43,7 +45,8 @@ class ChatApp(QWidget):
         self.cancel_button = QPushButton('Cancel')
 
         # Add button functionality.
-        self.connect_button.clicked.connect(self.show_connected_window)
+        self.connect_button.clicked.connect(self.connect_to_server)
+        self.cancel_button.clicked.connect(self.close_program)
         
         # Add components to grid layout
         self.grid_layout = QGridLayout()
@@ -67,25 +70,73 @@ class ChatApp(QWidget):
 
         self.show()
 
+    def connect_to_server(self):
+        # Connect to server at port
+        try:
+            """
+            self.host = self.ip_address_textbox.text()
+            self.port = int(self.port_textbox.text())
+            self.name = self.nickname_textbox.text()
+            """
+
+            self.host = 'localhost'
+            self.port = 9988
+            self.name = 'Steve'
+
+            self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.sock.connect((self.host, self.port))
+
+            # Sends the client name
+            send(self.sock, 'NAME: ' + self.name)
+            data = receive(self.sock)
+            
+            # Contains client address, set it
+            self.client = data.split('CLIENT: ')[1]
+        
+            self.show_menu_window()
+        except socket.error as e:
+            self.show_error_dialog(f'Failed to connect to chat server @ port {self.port}')
+        except NameError:
+            self.show_error_dialog("There was a name error.")
+        except Exception:
+            self.show_error_dialog("There was a connection error.")
+
     """
-    Used to show the connected window after connecting successfully.
+    Used to show a dialog
     """
-    def show_connected_window(self):
-        self.connected_window = ConnectedWindow(self.width, self.height, self.title, self)
-        self.connected_window.show()
+    def show_error_dialog(self, message):
+        error_dialog = QErrorMessage(self)
+        error_dialog.showMessage(message)
+
+    """
+    Used to show the menu window after connecting successfully.
+    """
+    def show_menu_window(self):
+        self.menu_window = MenuWindow(self.width, self.height, self.title, self)
+        self.menu_window.show()
         self.hide()
+
+    """
+    Used to end the program.
+    """
+    def close_program(self):
+        quit()
 
 """
 The window that is shown after successfully connecting.
 """
-class ConnectedWindow(QWidget):
+class MenuWindow(QWidget):
     def __init__(self, width, height, title, prev_window):
         super().__init__()
         self.width = int(width/2)
         self.height = height
         self.title = title
         self.prev_window = prev_window
-        self.setup_connected_window()
+        self.host = prev_window.host
+        self.client = prev_window.client
+        self.name = prev_window.name
+        self.sock = prev_window.sock
+        self.setup_menu_window()
 
     """
     Used to move the window to the center of the screen.
@@ -99,7 +150,7 @@ class ConnectedWindow(QWidget):
     """
     Used to setup the GUI.
     """
-    def setup_connected_window(self):
+    def setup_menu_window(self):
         self.setWindowTitle(self.title)
         self.resize(self.width, self.height)   
         self.center_window()
@@ -160,6 +211,7 @@ class ConnectedWindow(QWidget):
     Goes to the previous window.
     """
     def show_connection_window(self):
+        self.sock.close()
         self.prev_window.show()
         self.hide()
 
@@ -206,7 +258,7 @@ class ChatRoomWindow(QWidget):
         self.close_button = QPushButton('Close')
 
         # Button functionality
-        self.close_button.clicked.connect(self.show_connected_window)
+        self.close_button.clicked.connect(self.show_menu_window)
 
         # Create layouts
         self.chat_input_layout = QHBoxLayout()
@@ -223,7 +275,7 @@ class ChatRoomWindow(QWidget):
     """
     Goes to the previous window.
     """
-    def show_connected_window(self):
+    def show_menu_window(self):
         self.prev_window.show()
         self.hide()  
 
