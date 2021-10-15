@@ -53,7 +53,9 @@ class ChatServer(object):
             connected_client_name = client_data[1]
             time_message = ""
 
-            if client_data[1] == self.get_client_name(client):
+            current_client = '@'.join((client_data[1], client_data[0][0]))
+            print(self.get_client_name(client))
+            if current_client == self.get_client_name(client):
                 connected_client_name = connected_client_name + " (me)"
 
             if connected_time.seconds < 1:
@@ -114,9 +116,14 @@ class ChatServer(object):
                     try:
                         # handle all other sockets
                         data = receive(sock)
+                        # When a client wants to end their connection.
                         if data == "END":
                             send(sock, "END")
-                            print("trying to end the client.")   
+                            print("trying to end the client.")
+                        # When a client wants to send a one to one message.
+                        elif data == "MESSAGE":
+                            message = receive(sock)
+                            print(message)
                         else:
                             # When a user goes offline.
                             print(f'Chat server: {sock.fileno()} hung up')

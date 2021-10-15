@@ -312,6 +312,7 @@ class ChatRoomWindow(QWidget):
         self.close_button = QPushButton('Close')
 
         # Button functionality
+        self.send_button.clicked.connect(self.send_message)
         self.close_button.clicked.connect(self.show_menu_window)
 
         # Create layouts
@@ -332,6 +333,9 @@ class ChatRoomWindow(QWidget):
     def show_menu_window(self):
         self.prev_window.show()
         self.hide()  
+
+    def send_message(self):
+        print("message sent")
 
     """
     Loads the data for the chat room.
