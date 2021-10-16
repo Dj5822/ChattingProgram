@@ -83,14 +83,8 @@ class ChatApp(QWidget):
     def connect_to_server(self):
         # Connect to server at port
         try:
-            """
             self.host = self.ip_address_textbox.text()
             self.port = int(self.port_textbox.text())
-            self.name = self.nickname_textbox.text()
-            """
-
-            self.host = 'localhost'
-            self.port = 9988
             self.name = self.nickname_textbox.text()
 
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
