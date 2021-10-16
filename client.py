@@ -235,7 +235,8 @@ class MenuWindow(QWidget):
         self.update_worker.finished.connect(self.update_worker.deleteLater)
         self.update_thread.finished.connect(self.update_worker.stop)
         self.update_thread.finished.connect(self.update_thread.deleteLater)
-        self.update_worker.show_error_message.connect(lambda: self.show_error_dialog("You need to be invited to join the room."))
+        self.update_worker.show_error_message.connect(lambda: self.show_error_dialog("You need to be invited "
+                                                                                     "to join the room."))
         self.update_thread.start()
 
     def setup_menu_window(self):
