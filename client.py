@@ -339,6 +339,17 @@ class ChatRoomWindow(QWidget):
         self.target_username = None
         self.prev_window = prev_window
 
+        # Create components.
+        self.title_label = QLabel('Chat Title')
+        self.chat_text_browser = QTextBrowser()
+        self.chat_input = QLineEdit()
+        self.send_button = QPushButton('Send')
+        self.close_button = QPushButton('Close')
+
+        # Create layouts
+        self.chat_input_layout = QHBoxLayout()
+        self.chat_layout = QVBoxLayout()
+
         self.setup_chat_room_window()
 
     def setup_chat_room_window(self):
@@ -351,20 +362,6 @@ class ChatRoomWindow(QWidget):
         self.setLayout(self.chat_layout)
 
     def setup_chat_room_layout(self):
-        """
-        Used to setup the main layout.
-        """
-        # Create components.
-        self.title_label = QLabel('Chat Title')
-        self.chat_text_browser = QTextBrowser()
-        self.chat_input = QLineEdit()
-        self.send_button = QPushButton('Send')
-        self.close_button = QPushButton('Close')
-
-        # Create layouts
-        self.chat_input_layout = QHBoxLayout()
-        self.chat_layout = QVBoxLayout()
-
         # Button functionality
         self.send_button.clicked.connect(self.send_message)
         self.close_button.clicked.connect(self.show_menu_window)
@@ -429,23 +426,6 @@ class GroupChatRoomWindow(ChatRoomWindow):
     """
     def __init__(self, width, height, title, prev_window):
         super().__init__(width, height, title, prev_window)
-
-        self.client_name = prev_window.client_name
-        self.invite_window = InviteWindow(self.width, self.height, self.title, self)
-
-    def setup_chat_room_window(self):
-        self.width = int(self.width * 1.5)
-        self.setWindowTitle(self.title)
-        self.resize(self.width, self.height)
-        self.setup_group_chat_room_layout()
-        self.setLayout(self.group_chat_layout)
-
-    def setup_group_chat_room_layout(self):
-        """
-        Used to setup the main layout.
-        """
-        self.setup_chat_room_layout()
-
         # Create components
         self.members_label = QLabel('Members', self)
         self.members_list_widget = QListWidget()
@@ -454,6 +434,23 @@ class GroupChatRoomWindow(ChatRoomWindow):
         # Setup new layouts
         self.members_layout = QVBoxLayout()
         self.group_chat_layout = QHBoxLayout()
+
+        self.setup_group_chat_room_layout()
+        self.setLayout(self.group_chat_layout)
+
+        self.client_name = prev_window.client_name
+        self.invite_window = InviteWindow(self.width, self.height, self.title, self)
+
+    def setup_chat_room_window(self):
+        self.width = int(self.width * 1.5)
+        self.setWindowTitle(self.title)
+        self.resize(self.width, self.height)
+
+    def setup_group_chat_room_layout(self):
+        """
+        Used to setup the main layout.
+        """
+        self.setup_chat_room_layout()
 
         # Button functionality
         self.invite_button.clicked.connect(self.show_invite_window)
