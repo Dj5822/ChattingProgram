@@ -176,6 +176,9 @@ class ConnectedClientsWorker(QObject):
                     elif data == "UPDATE_INVITE_WINDOW":
                         invitable_clients_list = receive_list(self.sock)
                         self.invite_window.update_clients_list(invitable_clients_list)
+                    elif data == "INVITED":
+                        chat_room_members = receive_list(self.sock)
+                        print(chat_room_members)
                     elif data == "END":
                         print("terminating connection.")
                         break
@@ -191,6 +194,7 @@ class MenuWindow(QWidget):
     """
     The window that is shown after successfully connecting.
     """
+
     def __init__(self, width, height, title, prev_window):
         super().__init__()
         self.width = int(width / 2)
@@ -344,6 +348,7 @@ class ChatRoomWindow(QWidget):
     """
     The window that is shown after pressing 1:1 chat button.
     """
+
     def __init__(self, width, height, title, prev_window):
         super().__init__()
         self.width = width
@@ -438,6 +443,7 @@ class GroupChatRoomWindow(ChatRoomWindow):
     """
     The window that is shown after creating or joining a group chat.
     """
+
     def __init__(self, width, height, title, prev_window):
         super().__init__(width, height, title, prev_window)
         # Create components
@@ -510,12 +516,15 @@ class InviteWindow(QWidget):
     """
     The window that is shown after pressing the invite button.
     """
+
     def __init__(self, width, height, title, prev_window):
         super().__init__()
         self.width = int(width / 3)
         self.height = height
         self.title = title
         self.prev_window = prev_window
+
+        self.sock = prev_window.sock
 
         # Create components
         self.connected_clients_label = QLabel("Connected Clients", self)
@@ -529,6 +538,13 @@ class InviteWindow(QWidget):
 
         self.setup_invite_window()
 
+    def show_error_dialog(self, message):
+        """
+        Used to show a dialog
+        """
+        error_dialog = QErrorMessage(self)
+        error_dialog.showMessage(message)
+
     def setup_invite_window(self):
         """
         Used to setup the GUI
@@ -537,6 +553,7 @@ class InviteWindow(QWidget):
         self.resize(self.width, self.height)
 
         # Button functionality
+        self.invite_button.clicked.connect(self.invite_button_pressed)
         self.cancel_button.clicked.connect(self.show_group_chat_window)
 
         # Add components to layout
@@ -554,12 +571,19 @@ class InviteWindow(QWidget):
         self.prev_window.show()
         self.hide()
 
+    def invite_button_pressed(self):
+        selected_client = self.clients_list_widget.selectedItems()
+        if len(selected_client) != 1:
+            self.show_error_dialog("Please select a client from the list.")
+        else:
+            send(self.sock, "INVITE")
+            send(self.sock, self.prev_window.room_title)
+            send(self.sock, str(selected_client[0].text()))
+
     def update_clients_list(self, clients_list):
         self.clients_list_widget.clear()
         for i in range(len(clients_list)):
             self.clients_list_widget.insertItem(i, clients_list[i])
-
-
 
 
 if __name__ == '__main__':

@@ -160,7 +160,6 @@ class ChatServer(object):
                             send(sock, "CREATE_ROOM")
                             send(sock, room_name)
 
-                            print("Sending room info")
                             # Tell everyone to update their rooms lists.
                             for output in self.outputs:
                                 send(output, "UPDATE_ROOMS_LIST")
@@ -171,6 +170,7 @@ class ChatServer(object):
                             room_name = receive(sock)
                             send(sock, "JOIN_ROOM")
                             send_list(sock, self.chat_rooms[room_name]["members"])
+                        # Used to update the members list in the invite window.
                         elif data == "UPDATE_INVITE_WINDOW":
                             room_name = receive(sock)
                             room_members = self.chat_rooms[room_name]["members"]
@@ -181,6 +181,17 @@ class ChatServer(object):
                                     non_room_members.append(client_name)
                             send(sock, "UPDATE_INVITE_WINDOW")
                             send_list(sock, non_room_members)
+                        # Used to invite a new user to a chat room.
+                        elif data == "INVITE":
+                            room_name = receive(sock)
+                            client_name = receive(sock)
+                            self.chat_rooms[room_name]["members"].append(client_name)
+
+                            # send to all members in the chat room.
+                            for member_name in self.chat_rooms[room_name]["members"]:
+                                destination_sock = self.get_client_socket(member_name)
+                                send(destination_sock, "INVITED")
+                                send_list(destination_sock, self.chat_rooms[room_name]["members"])
                         # When a user goes offline.
                         else:
                             print(f'Chat server: {sock.fileno()} hung up')
