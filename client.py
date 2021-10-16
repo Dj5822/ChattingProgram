@@ -137,6 +137,9 @@ class ConnectedClientsWorker(QObject):
                     elif data == "CLIENT_LIST":
                         clients_list = receive_clients(self.sock)
                         self.menu_window.update_connected_clients(clients_list)
+                    elif data == "CREATE_ROOM":
+                        room_list = receive_list(self.sock)
+                        self.menu_window.update_chat_rooms_list(room_list)
                     elif data == "MESSAGE":
                         message = receive(self.sock)
                         self.chat_window.add_message(message)
@@ -169,7 +172,6 @@ class MenuWindow(QWidget):
         clients_list = receive_clients(self.sock)
 
         self.update_connected_clients(clients_list)
-        self.update_chat_rooms_list(["test chat room 1", "test chat room 2"])
 
         self.chat_room_window = ChatRoomWindow(self.width, self.height, self.title, self)
         self.group_chat_room_window = GroupChatRoomWindow(self.width, self.height, self.title, self)
@@ -203,8 +205,8 @@ class MenuWindow(QWidget):
 
         # Add button functionality.
         self.one_to_one_chat_button.clicked.connect(self.show_chat_window)
-        self.create_button.clicked.connect(self.show_group_chat_window)
-        self.join_button.clicked.connect(self.show_group_chat_window)
+        self.create_button.clicked.connect(self.create_button_clicked)
+        self.join_button.clicked.connect(self.join_button_clicked)
         self.close_button.clicked.connect(self.show_connection_window)
 
         # Create layouts
@@ -241,6 +243,13 @@ class MenuWindow(QWidget):
             self.chat_room_window.load_data(target_user)
             self.chat_room_window.show()
             self.hide()
+
+    def create_button_clicked(self):
+        send(self.sock, "CREATE_ROOM")
+        self.show_group_chat_window()
+
+    def join_button_clicked(self):
+        self.show_group_chat_window()
 
     """
     Used to show a dialog
@@ -355,6 +364,10 @@ class ChatRoomWindow(QWidget):
         self.title_label.setText("Chat with " + username)
         self.username = username
         self.chat_text_browser.clear()
+        """
+        Currently does nothing but can call saved data
+        from the server later.
+        """
         message_list = []
         for message in message_list:
             self.chat_text_browser.append(message)

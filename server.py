@@ -16,7 +16,8 @@ class ChatServer(object):
     def __init__(self, port, backlog=5):
         self.clients = 0
         self.clientmap = {}
-        self.chatroom_map = {}
+        self.chatrooms = {}
+        self.chatrooms_count = 0
         self.outputs = []  # list output sockets
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -113,7 +114,9 @@ class ChatServer(object):
                     # Send clients list to all the connected clients.
                     for output in self.outputs:
                         send(output, "CLIENT_LIST") 
-                        self.send_connected_clients(output)              
+                        self.send_connected_clients(output)  
+                        send(output, "CREATE_ROOM")
+                        send_list(output, list(self.chatrooms.keys()))           
 
                 elif sock == sys.stdin:
                     # handles standard input from terminal.
@@ -145,6 +148,15 @@ class ChatServer(object):
                             # sends a message to the target
                             send(target_sock, "MESSAGE")
                             send(target_sock, self.clientmap[sock][1] + " (" + current_time + "): " + message)
+                        elif data == "CREATE_ROOM":
+                            self.chatrooms_count = self.chatrooms_count + 1
+                            self.chatrooms["Room" + str(self.chatrooms_count) + " by " + self.clientmap[sock][1]] = {
+                                "members": [self.clientmap[sock][1]],
+                                "message_history": []
+                            }
+                            for output in self.outputs:
+                                send(output, "CREATE_ROOM")
+                                send_list(output, list(self.chatrooms.keys()))
                         else:
                             # When a user goes offline.
                             print(f'Chat server: {sock.fileno()} hung up')
