@@ -246,6 +246,9 @@ class MenuWindow(QWidget):
 
     def create_button_clicked(self):
         send(self.sock, "CREATE_ROOM")
+        self.room_title = receive(self.sock)
+        self.members_list = receive_list(self.sock)
+        self.group_chat_room_window.load_data(self.room_title, [], self.members_list)
         self.show_group_chat_window()
 
     def join_button_clicked(self):
@@ -262,7 +265,6 @@ class MenuWindow(QWidget):
     Goes to group chat window.
     """
     def show_group_chat_window(self):
-        self.group_chat_room_window.load_data("Test title", ["Message 1", "Message 2"], ["Member 1", "Member 2"])
         self.group_chat_room_window.show()
         self.hide()
 
@@ -440,14 +442,19 @@ class GroupChatRoomWindow(ChatRoomWindow):
     """
     def load_data(self, title, message_list, members_list):
         self.title_label.setText(title)
+        self.update_messages(message_list)
+        self.update_members(members_list)
+        
+    def update_messages(self, message_list):
         self.chat_text_browser.clear()
-        self.members_list_widget.clear()
-
         for message in message_list:
             self.chat_text_browser.append(message)
 
+    def update_members(self, members_list):
+        self.members_list_widget.clear()
         for i in range(len(members_list)):
             self.members_list_widget.insertItem(i, members_list[i])
+
 
 """
 The window that is shown after pressing the invite button.

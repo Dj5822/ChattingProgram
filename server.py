@@ -148,17 +148,32 @@ class ChatServer(object):
                             # sends a message to the target
                             send(target_sock, "MESSAGE")
                             send(target_sock, self.clientmap[sock][1] + " (" + current_time + "): " + message)
+                        # Creates a new chat room.
                         elif data == "CREATE_ROOM":
                             self.chatrooms_count = self.chatrooms_count + 1
-                            self.chatrooms["Room" + str(self.chatrooms_count) + " by " + self.clientmap[sock][1]] = {
+                            room_name = "Room" + str(self.chatrooms_count) + " by " + self.clientmap[sock][1]
+                            self.chatrooms[room_name] = {
                                 "members": [self.clientmap[sock][1]],
                                 "message_history": []
                             }
+                            send(sock, room_name)
+                            send_list(sock, self.chatrooms[room_name]["members"])
+
                             for output in self.outputs:
                                 send(output, "CREATE_ROOM")
                                 send_list(output, list(self.chatrooms.keys()))
+                        elif data == "GET_INVITED_MEMBERS":
+                            """
+                            sends a list of members corresponding to that chat room
+                            to all the users of that chat room.
+                            """
+                            room_name = receive(sock)
+                            # send to all members in the chat room.
+                            for member_name in self.chatrooms[room_name].members:
+                                dest_sock = self.get_client_socket(member_name)
+                                send_list(dest_sock, self.chatrooms[room_name].members)                           
+                        # When a user goes offline.
                         else:
-                            # When a user goes offline.
                             print(f'Chat server: {sock.fileno()} hung up')
                             self.clients -= 1
                             sock.close()
