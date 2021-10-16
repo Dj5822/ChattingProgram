@@ -114,7 +114,7 @@ class ChatServer(object):
                     for output in self.outputs:
                         send(output, "CLIENT_LIST") 
                         self.send_connected_clients(output)  
-                        send(output, "CREATE_ROOM")
+                        send(output, "UPDATE_ROOMS_LIST")
                         send_list(output, list(self.chat_rooms.keys()))
 
                 elif sock == sys.stdin:
@@ -155,16 +155,16 @@ class ChatServer(object):
                                 "members": [self.client_map[sock][1]],
                                 "message_history": []
                             }
-                            send(sock, room_name)
-                            send_list(sock, self.chat_rooms[room_name]["members"])
 
-                            for output in self.outputs:
-                                if output != sock:
-                                    send(output, "CREATE_ROOM")
-                                    send_list(output, list(self.chat_rooms.keys()))
-                            
+                            # Tell the client that we have created the room.
                             send(sock, "CREATE_ROOM")
-                            send_list(sock, list(self.chat_rooms.keys()))
+                            send(sock, room_name)
+
+                            print("Sending room info")
+                            # Tell everyone to update their rooms lists.
+                            for output in self.outputs:
+                                send(output, "UPDATE_ROOMS_LIST")
+                                send_list(output, list(self.chat_rooms.keys()))
                         elif data == "GET_INVITED_MEMBERS":
                             """
                             sends a list of members corresponding to that chat room

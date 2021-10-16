@@ -45,8 +45,8 @@ class ChatApp(QWidget):
         self.host = ''
         self.port = None
         self.name = ''
+        self.sock = None
         self.menu_window = None
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
     def setup_connection_window(self):
         """
@@ -91,6 +91,7 @@ class ChatApp(QWidget):
             self.port = 9988
             self.name = self.nickname_textbox.text()
 
+            self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.sock.connect((self.host, self.port))
             self.menu_window = MenuWindow(self.width, self.height, self.title, self)
             self.show_menu_window()
@@ -124,10 +125,11 @@ class ConnectedClientsWorker(QObject):
     """
     finished = pyqtSignal()
 
-    def __init__(self, sock, chat_window, menu_window, parent=None):
+    def __init__(self, sock, chat_window, group_chat_window, menu_window, parent=None):
         super().__init__(parent=parent)
         self.sock = sock
         self.chat_window = chat_window
+        self.group_chat_window = group_chat_window
         self.menu_window = menu_window
         self.connected = True
 
@@ -147,6 +149,9 @@ class ConnectedClientsWorker(QObject):
                         clients_list = receive_clients(self.sock)
                         self.menu_window.update_connected_clients(clients_list)
                     elif data == "CREATE_ROOM":
+                        self.group_chat_window.room_title = receive(self.sock)
+                        self.group_chat_window.load_group_chat([self.menu_window.client_name + " (Host)"])
+                    elif data == "UPDATE_ROOMS_LIST":
                         room_list = receive_list(self.sock)
                         self.menu_window.update_chat_rooms_list(room_list)
                     elif data == "MESSAGE":
@@ -175,6 +180,9 @@ class MenuWindow(QWidget):
         self.prev_window = prev_window
         self.sock = prev_window.sock
         self.client_name = prev_window.name
+
+        self.room_title = ""
+        self.members_list = []
 
         # Create components
         self.connected_clients_label = QLabel('Connected Clients', self)
@@ -205,7 +213,7 @@ class MenuWindow(QWidget):
         self.group_chat_room_window = GroupChatRoomWindow(self.width, self.height, self.title, self)
 
         self.update_thread = QThread()
-        self.update_worker = ConnectedClientsWorker(self.sock, self.chat_room_window, self)
+        self.update_worker = ConnectedClientsWorker(self.sock, self.chat_room_window, self.group_chat_room_window, self)
         self.update_worker.moveToThread(self.update_thread)
         self.update_thread.started.connect(self.update_worker.run)
         self.update_worker.finished.connect(self.update_thread.quit)
@@ -257,23 +265,19 @@ class MenuWindow(QWidget):
             self.hide()
 
     def create_button_clicked(self):
-        """
         send(self.sock, "CREATE_ROOM")
-        self.room_title = receive(self.sock)
-        self.members_list = receive_list(self.sock)
-        self.group_chat_room_window.load_data(self.room_title, [], self.members_list)
-        """
         self.show_group_chat_window()
 
     def join_button_clicked(self):
         selected_chatroom = self.chat_rooms_list_widget.selectedItems()
-        """
-        if (len(selected_chatroom) != 1):
+        if len(selected_chatroom) != 1:
             self.show_error_dialog("Please selected a chat room from the list.")
         else:
             # If the user is invited, then they can join the room.
             send(self.sock, "GET_INVITED_MEMBERS")
             send(self.sock, str(selected_chatroom[0].text()))
+
+            """
             members_list = list(receive_list(self.sock))
             
             invited = False
@@ -285,7 +289,7 @@ class MenuWindow(QWidget):
                 self.show_group_chat_window()
             else:
                 self.show_error_dialog("You need to be invited in order to join this chat room.")
-        """
+            """
 
     def show_error_dialog(self, message):
         """
@@ -438,6 +442,7 @@ class GroupChatRoomWindow(ChatRoomWindow):
         self.setup_group_chat_room_layout()
         self.setLayout(self.group_chat_layout)
 
+        self.room_title = "No Title"
         self.client_name = prev_window.client_name
         self.invite_window = InviteWindow(self.width, self.height, self.title, self)
 
@@ -469,13 +474,14 @@ class GroupChatRoomWindow(ChatRoomWindow):
         self.invite_window.show()
         self.hide()
 
-    def load_data(self, title, message_list, members_list):
+    def load_group_chat(self, members_list):
         """
         Loads the data for the chat room.
         """
-        self.title_label.setText(title)
-        self.update_messages(message_list)
-        self.update_members(members_list)
+        self.title_label.setText(self.room_title)
+        self.members_list_widget.clear()
+        for i in range(len(members_list)):
+            self.members_list_widget.insertItem(i, members_list[i])
 
     def update_messages(self, message_list):
         self.chat_text_browser.clear()
