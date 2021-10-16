@@ -148,15 +148,29 @@ class ConnectedClientsWorker(QObject):
                     elif data == "CLIENT_LIST":
                         clients_list = receive_clients(self.sock)
                         self.menu_window.update_connected_clients(clients_list)
+                    elif data == "MESSAGE":
+                        message = receive(self.sock)
+                        self.chat_window.add_message(message)
                     elif data == "CREATE_ROOM":
                         self.group_chat_window.room_title = receive(self.sock)
                         self.group_chat_window.load_group_chat([self.menu_window.client_name + " (Host)"])
                     elif data == "UPDATE_ROOMS_LIST":
                         room_list = receive_list(self.sock)
                         self.menu_window.update_chat_rooms_list(room_list)
-                    elif data == "MESSAGE":
-                        message = receive(self.sock)
-                        self.chat_window.add_message(message)
+                    elif data == "JOIN_ROOM":
+                        # get all the members of the chat room.
+                        members_list = list(receive_list(self.sock))
+
+                        invited = False
+                        for member_name in members_list:
+                            if member_name == self.menu_window.client_name:
+                                invited = True
+
+                        if invited:
+                            self.group_chat_window.load_group_chat(["test"])
+                            self.menu_window.show_group_chat_window()
+                        else:
+                            self.menu_window.show_error_dialog("You need to be invited in order to join this chat room.")
                     elif data == "END":
                         print("terminating connection.")
                         break
@@ -274,22 +288,10 @@ class MenuWindow(QWidget):
             self.show_error_dialog("Please selected a chat room from the list.")
         else:
             # If the user is invited, then they can join the room.
-            send(self.sock, "GET_INVITED_MEMBERS")
+            send(self.sock, "JOIN_ROOM")
+            # Sends the room name.
             send(self.sock, str(selected_chatroom[0].text()))
-
-            """
-            members_list = list(receive_list(self.sock))
-            
-            invited = False
-            for member_name in members_list:
-                if member_name == self.client_name:
-                    invited = True
-
-            if invited:    
-                self.show_group_chat_window()
-            else:
-                self.show_error_dialog("You need to be invited in order to join this chat room.")
-            """
+            self.group_chat_room_window.room_title = str(selected_chatroom[0].text())
 
     def show_error_dialog(self, message):
         """

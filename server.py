@@ -165,24 +165,12 @@ class ChatServer(object):
                             for output in self.outputs:
                                 send(output, "UPDATE_ROOMS_LIST")
                                 send_list(output, list(self.chat_rooms.keys()))
-                        elif data == "GET_INVITED_MEMBERS":
-                            """
-                            sends a list of members corresponding to that chat room
-                            to all the users of that chat room.
-                            """
+                        # Used to join a specific room.
+                        elif data == "JOIN_ROOM":
+                            # gets the room name.
                             room_name = receive(sock)
+                            send(sock, "JOIN_ROOM")
                             send_list(sock, self.chat_rooms[room_name]["members"])
-                        elif data ==  "UPDATE_INVITED_MEMBERS":
-                            """
-                            sends a list of members corresponding to that chat room
-                            to all the users of that chat room.
-                            """
-                            room_name = receive(sock)
-                            # send to all members in the chat room.
-                            for member_name in self.chat_rooms[room_name]["members"]:
-                                dest_sock = self.get_client_socket(member_name)
-                                send_list(dest_sock, self.chat_rooms[room_name]["members"])
-
                         # When a user goes offline.
                         else:
                             print(f'Chat server: {sock.fileno()} hung up')
