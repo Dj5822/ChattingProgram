@@ -168,7 +168,7 @@ class ConnectedClientsWorker(QObject):
                                 invited = True
 
                         if invited:
-                            self.group_chat_window.load_group_chat(["test"])
+                            self.group_chat_window.load_group_chat(members_list)
                             self.menu_window.show_group_chat_window()
                         else:
                             self.show_error_message.emit()
