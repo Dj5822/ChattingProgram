@@ -126,9 +126,10 @@ class ConnectedClientsWorker(QObject):
     finished = pyqtSignal()
     show_error_message = pyqtSignal()
 
-    def __init__(self, sock, chat_window, group_chat_window, menu_window, parent=None):
+    def __init__(self, sock, invite_window, chat_window, group_chat_window, menu_window, parent=None):
         super().__init__(parent=parent)
         self.sock = sock
+        self.invite_window = invite_window
         self.chat_window = chat_window
         self.group_chat_window = group_chat_window
         self.menu_window = menu_window
@@ -172,6 +173,9 @@ class ConnectedClientsWorker(QObject):
                             self.menu_window.show_group_chat_window()
                         else:
                             self.show_error_message.emit()
+                    elif data == "UPDATE_INVITE_WINDOW":
+                        invitable_clients_list = receive_list(self.sock)
+                        self.invite_window.update_clients_list(invitable_clients_list)
                     elif data == "END":
                         print("terminating connection.")
                         break
@@ -228,7 +232,8 @@ class MenuWindow(QWidget):
         self.group_chat_room_window = GroupChatRoomWindow(self.width, self.height, self.title, self)
 
         self.update_thread = QThread()
-        self.update_worker = ConnectedClientsWorker(self.sock, self.chat_room_window, self.group_chat_room_window, self)
+        self.update_worker = ConnectedClientsWorker(self.sock, self.group_chat_room_window.invite_window,
+                                                    self.chat_room_window, self.group_chat_room_window, self)
         self.update_worker.moveToThread(self.update_thread)
         self.update_thread.started.connect(self.update_worker.run)
         self.update_worker.finished.connect(self.update_thread.quit)
@@ -476,6 +481,8 @@ class GroupChatRoomWindow(ChatRoomWindow):
         """
         Used to show the invite window.
         """
+        send(self.sock, "UPDATE_INVITE_WINDOW")
+        send(self.sock, self.room_title)
         self.invite_window.show()
         self.hide()
 
@@ -512,7 +519,7 @@ class InviteWindow(QWidget):
 
         # Create components
         self.connected_clients_label = QLabel("Connected Clients", self)
-        self.clients_text_browser = QTextBrowser()
+        self.clients_list_widget = QListWidget()
         self.invite_button = QPushButton("Invite")
         self.cancel_button = QPushButton("Cancel")
 
@@ -534,7 +541,7 @@ class InviteWindow(QWidget):
 
         # Add components to layout
         self.parent_layout.addWidget(self.connected_clients_label)
-        self.parent_layout.addWidget(self.clients_text_browser)
+        self.parent_layout.addWidget(self.clients_list_widget)
         self.button_layout.addWidget(self.invite_button)
         self.button_layout.addWidget(self.cancel_button)
         self.parent_layout.addLayout(self.button_layout)
@@ -546,6 +553,13 @@ class InviteWindow(QWidget):
         """
         self.prev_window.show()
         self.hide()
+
+    def update_clients_list(self, clients_list):
+        self.clients_list_widget.clear()
+        for i in range(len(clients_list)):
+            self.clients_list_widget.insertItem(i, clients_list[i])
+
+
 
 
 if __name__ == '__main__':
