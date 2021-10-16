@@ -203,6 +203,18 @@ class ChatServer(object):
                                     non_room_members.append(client_name)
                             send(sock, "UPDATE_INVITE_WINDOW")
                             send_list(sock, non_room_members)
+                        elif data == "GROUP_MESSAGE":
+                            room_name = receive(sock)
+                            message = receive(sock)
+
+                            current_time = self.get_current_time_stamp()
+
+                            # notify all the clients in the room.
+                            for member_name in self.chat_rooms[room_name]["members"]:
+                                destination_sock = self.get_client_socket(member_name)
+                                send(destination_sock, "GROUP_MESSAGE")
+                                send(destination_sock, room_name)
+                                send(destination_sock, member_name + " (" + current_time + "): " + message)
                         # When a user goes offline.
                         else:
                             print(f'Chat server: {sock.fileno()} hung up')

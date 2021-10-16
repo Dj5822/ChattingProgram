@@ -181,6 +181,11 @@ class ConnectedClientsWorker(QObject):
                         chat_room_members = receive_list(self.sock)
                         if self.group_chat_window.room_title == room_name:
                             self.group_chat_window.update_members(chat_room_members)
+                    elif data == "GROUP_MESSAGE":
+                        room_name = receive(self.sock)
+                        message = receive(self.sock)
+                        if self.group_chat_window.room_title == room_name:
+                            self.group_chat_window.add_group_message(message)
                     elif data == "END":
                         print("terminating connection.")
                         break
@@ -375,16 +380,21 @@ class ChatRoomWindow(QWidget):
 
     def setup_chat_room_window(self):
         """
-        Used to setup the GUI.
+        Used to setup components for both chatroom and group chatroom.
         """
         self.setWindowTitle(self.title)
         self.resize(self.width, self.height)
         self.setup_chat_room_layout()
         self.setLayout(self.chat_layout)
 
-    def setup_chat_room_layout(self):
         # Button functionality
         self.send_button.clicked.connect(self.send_message)
+
+    def setup_chat_room_layout(self):
+        """
+        Used to setup components exclusive to chatroom.
+        """
+        # Button functionality
         self.close_button.clicked.connect(self.show_menu_window)
 
         # Add components to layouts
@@ -476,6 +486,7 @@ class GroupChatRoomWindow(ChatRoomWindow):
         self.setup_chat_room_layout()
 
         # Button functionality
+        self.send_button.clicked.connect(self.send_button_clicked)
         self.invite_button.clicked.connect(self.show_invite_window)
 
         # Add components to layout
@@ -512,6 +523,18 @@ class GroupChatRoomWindow(ChatRoomWindow):
         self.members_list_widget.clear()
         for i in range(len(members_list)):
             self.members_list_widget.insertItem(i, members_list[i])
+
+    def send_button_clicked(self):
+        send(self.sock, "GROUP_MESSAGE")
+        send(self.sock, self.room_title)
+        send(self.sock, str(self.chat_input.text()))
+        self.chat_input.clear()
+
+    def add_group_message(self, message):
+        """
+        Adds a new message the text browser.
+        """
+        self.chat_text_browser.append(message)
 
 
 class InviteWindow(QWidget):
