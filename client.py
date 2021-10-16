@@ -177,8 +177,10 @@ class ConnectedClientsWorker(QObject):
                         invitable_clients_list = receive_list(self.sock)
                         self.invite_window.update_clients_list(invitable_clients_list)
                     elif data == "INVITED":
+                        room_name = receive(self.sock)
                         chat_room_members = receive_list(self.sock)
-                        print(chat_room_members)
+                        if self.group_chat_window.room_title == room_name:
+                            self.group_chat_window.update_members(chat_room_members)
                     elif data == "END":
                         print("terminating connection.")
                         break

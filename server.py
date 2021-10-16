@@ -191,7 +191,18 @@ class ChatServer(object):
                             for member_name in self.chat_rooms[room_name]["members"]:
                                 destination_sock = self.get_client_socket(member_name)
                                 send(destination_sock, "INVITED")
+                                send(destination_sock, room_name)
                                 send_list(destination_sock, self.chat_rooms[room_name]["members"])
+
+                            # update the invite window
+                            room_members = self.chat_rooms[room_name]["members"]
+                            non_room_members = []
+                            for client in self.client_map:
+                                client_name = self.get_client_name(client).split('@')[0]
+                                if client_name not in room_members:
+                                    non_room_members.append(client_name)
+                            send(sock, "UPDATE_INVITE_WINDOW")
+                            send_list(sock, non_room_members)
                         # When a user goes offline.
                         else:
                             print(f'Chat server: {sock.fileno()} hung up')
