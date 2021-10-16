@@ -6,6 +6,7 @@ import typing
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import QObject, QThread, pyqtSignal
 from utils import *
+import ssl
 
 
 def close_program():
@@ -46,6 +47,7 @@ class ChatApp(QWidget):
         self.port = None
         self.name = ''
         self.sock = None
+        self.context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
         self.menu_window = None
 
     def setup_connection_window(self):
@@ -92,6 +94,7 @@ class ChatApp(QWidget):
             self.name = self.nickname_textbox.text()
 
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.sock = self.context.wrap_socket(self.sock, server_hostname=self.host)
             self.sock.connect((self.host, self.port))
             self.menu_window = MenuWindow(self.width, self.height, self.title, self)
             self.show_menu_window()
