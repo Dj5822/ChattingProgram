@@ -2,7 +2,6 @@ import select
 import socket
 import sys
 import signal
-import argparse
 
 from utils import *
 from datetime import datetime
@@ -13,20 +12,20 @@ SERVER_HOST = 'localhost'
 class ChatServer(object):
     """ An example chat server using select """
 
-    def __init__(self, port, backlog=5):
+    def __init__(self, port_number, backlog=5):
         self.clients = 0
-        self.clientmap = {}
-        self.chatrooms = {}
-        self.chatrooms_count = 0
+        self.client_map = {}
+        self.chat_rooms = {}
+        self.chat_rooms_count = 0
         self.outputs = []  # list output sockets
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self.server.bind((SERVER_HOST, port))
+        self.server.bind((SERVER_HOST, port_number))
         self.server.listen(backlog)
         # Catch keyboard interrupts
         signal.signal(signal.SIGINT, self.sighandler)
 
-        print(f'Server listening to port: {port} ...')
+        print(f'Server listening to port: {port_number} ...')
 
     # Used to close the server.
     def sighandler(self, signum, frame):
@@ -42,14 +41,14 @@ class ChatServer(object):
     # Gets the name of a specific client.
     def get_client_name(self, client):
         """ Return the name of the client """
-        info = self.clientmap[client]
-        host, name = info[0][0], info[1]
-        return '@'.join((name, host))
+        info = self.client_map[client]
+        host, client_name = info[0][0], info[1]
+        return '@'.join((client_name, host))
 
     # Sends connected clients to the specific client.
     def send_connected_clients(self, client):
         connected_clients_list = []
-        for client_data in self.clientmap.values():
+        for client_data in self.client_map.values():
             connected_time = datetime.now() - client_data[2]
             connected_client_name = client_data[1]
             time_message = ""
@@ -77,8 +76,8 @@ class ChatServer(object):
     
     # Gets the specific socket of a client with the matching name.
     def get_client_socket(self, client_name):
-        for client_key in dict.keys(self.clientmap):
-            if self.clientmap[client_key][1] == client_name:
+        for client_key in dict.keys(self.client_map):
+            if self.client_map[client_key][1] == client_name:
                 return client_key
 
     def run(self):
@@ -108,7 +107,7 @@ class ChatServer(object):
                     # Compute client name and send back
                     self.clients += 1
                     inputs.append(client)
-                    self.clientmap[client] = (address, cname, time)
+                    self.client_map[client] = (address, cname, time)
                     self.outputs.append(client)
 
                     # Send clients list to all the connected clients.
@@ -116,13 +115,13 @@ class ChatServer(object):
                         send(output, "CLIENT_LIST") 
                         self.send_connected_clients(output)  
                         send(output, "CREATE_ROOM")
-                        send_list(output, list(self.chatrooms.keys()))           
+                        send_list(output, list(self.chat_rooms.keys()))
 
                 elif sock == sys.stdin:
                     # handles standard input from terminal.
                     cmd = sys.stdin.readline().strip()
                     if cmd == 'list':
-                        print(self.clientmap.values())
+                        print(self.client_map.values())
                     elif cmd == 'quit':
                         running = False
                 else:
@@ -147,31 +146,43 @@ class ChatServer(object):
                             
                             # sends a message to the target
                             send(target_sock, "MESSAGE")
-                            send(target_sock, self.clientmap[sock][1] + " (" + current_time + "): " + message)
+                            send(target_sock, self.client_map[sock][1] + " (" + current_time + "): " + message)
                         # Creates a new chat room.
                         elif data == "CREATE_ROOM":
-                            self.chatrooms_count = self.chatrooms_count + 1
-                            room_name = "Room" + str(self.chatrooms_count) + " by " + self.clientmap[sock][1]
-                            self.chatrooms[room_name] = {
-                                "members": [self.clientmap[sock][1]],
+                            self.chat_rooms_count = self.chat_rooms_count + 1
+                            room_name = "Room" + str(self.chat_rooms_count) + " by " + self.client_map[sock][1]
+                            self.chat_rooms[room_name] = {
+                                "members": [self.client_map[sock][1]],
                                 "message_history": []
                             }
                             send(sock, room_name)
-                            send_list(sock, self.chatrooms[room_name]["members"])
+                            send_list(sock, self.chat_rooms[room_name]["members"])
 
                             for output in self.outputs:
-                                send(output, "CREATE_ROOM")
-                                send_list(output, list(self.chatrooms.keys()))
+                                if output != sock:
+                                    send(output, "CREATE_ROOM")
+                                    send_list(output, list(self.chat_rooms.keys()))
+                            
+                            send(sock, "CREATE_ROOM")
+                            send_list(sock, list(self.chat_rooms.keys()))
                         elif data == "GET_INVITED_MEMBERS":
                             """
                             sends a list of members corresponding to that chat room
                             to all the users of that chat room.
                             """
                             room_name = receive(sock)
+                            send_list(sock, self.chat_rooms[room_name]["members"])
+                        elif data ==  "UPDATE_INVITED_MEMBERS":
+                            """
+                            sends a list of members corresponding to that chat room
+                            to all the users of that chat room.
+                            """
+                            room_name = receive(sock)
                             # send to all members in the chat room.
-                            for member_name in self.chatrooms[room_name].members:
+                            for member_name in self.chat_rooms[room_name]["members"]:
                                 dest_sock = self.get_client_socket(member_name)
-                                send_list(dest_sock, self.chatrooms[room_name].members)                           
+                                send_list(dest_sock, self.chat_rooms[room_name]["members"])
+
                         # When a user goes offline.
                         else:
                             print(f'Chat server: {sock.fileno()} hung up')
@@ -179,7 +190,7 @@ class ChatServer(object):
                             sock.close()
                             inputs.remove(sock)
                             self.outputs.remove(sock)
-                            self.clientmap.pop(sock)
+                            self.client_map.pop(sock)
                             # Update client list for other clients.
                             for output in self.outputs:
                                 if output != sock:
@@ -187,7 +198,7 @@ class ChatServer(object):
                                     self.send_connected_clients(output)
                     except socket.error as e:
                         # Remove
-                        self.clientmap.pop(sock)
+                        self.client_map.pop(sock)
                         inputs.remove(sock)
                         self.outputs.remove(sock)
 

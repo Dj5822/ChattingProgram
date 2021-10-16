@@ -7,26 +7,26 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtCore import QObject, QThread, pyqtSignal
 from utils import *
 
-"""
-The first window that is shown at the start of the application.
-"""
+
+def close_program():
+    """
+    Used to end the program.
+    """
+    quit()
+
+
 class ChatApp(QWidget):
+    """
+    The first window that is shown at the start of the application.
+    """
 
     def __init__(self):
         super().__init__()
         screen = app.primaryScreen()
         size = screen.size()
-        self.width = int(size.width()/2)
-        self.height = int(size.height()/2)
+        self.width = int(size.width() / 2)
+        self.height = int(size.height() / 2)
         self.title = "Chat Application"
-        self.setup_connection_window()
-
-    """
-    Used to setup the GUI.
-    """
-    def setup_connection_window(self):
-        self.setWindowTitle(self.title)
-        self.resize(self.width, self.height)   
 
         # Create components.
         self.ip_address_label = QLabel('IP Address', self)
@@ -37,13 +37,29 @@ class ChatApp(QWidget):
         self.nickname_textbox = QLineEdit(self)
         self.connect_button = QPushButton('Connect')
         self.cancel_button = QPushButton('Cancel')
+        self.grid_layout = QGridLayout()
+        self.button_layout = QHBoxLayout()
+        self.parent_layout = QVBoxLayout()
+        self.setup_connection_window()
+
+        self.host = ''
+        self.port = None
+        self.name = ''
+        self.menu_window = None
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+    def setup_connection_window(self):
+        """
+        Used to setup the GUI.
+        """
+        self.setWindowTitle(self.title)
+        self.resize(self.width, self.height)
 
         # Add button functionality.
         self.connect_button.clicked.connect(self.connect_to_server)
-        self.cancel_button.clicked.connect(self.close_program)
-        
+        self.cancel_button.clicked.connect(close_program)
+
         # Add components to grid layout
-        self.grid_layout = QGridLayout()
         self.grid_layout.addWidget(self.ip_address_label, 0, 0)
         self.grid_layout.addWidget(self.port_label, 1, 0)
         self.grid_layout.addWidget(self.nickname_label, 2, 0)
@@ -52,12 +68,10 @@ class ChatApp(QWidget):
         self.grid_layout.addWidget(self.nickname_textbox, 2, 1)
 
         # Add buttons to layout.
-        self.button_layout = QHBoxLayout()
         self.button_layout.addWidget(self.connect_button)
         self.button_layout.addWidget(self.cancel_button)
-        
+
         # Add layouts to the parent layout.
-        self.parent_layout = QVBoxLayout()
         self.parent_layout.addLayout(self.grid_layout)
         self.parent_layout.addLayout(self.button_layout)
         self.setLayout(self.parent_layout)
@@ -77,9 +91,8 @@ class ChatApp(QWidget):
             self.port = 9988
             self.name = self.nickname_textbox.text()
 
-            self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.sock.connect((self.host, self.port))
-            self.menu_window = MenuWindow(self.width, self.height, self.title, self)            
+            self.menu_window = MenuWindow(self.width, self.height, self.title, self)
             self.show_menu_window()
 
         except socket.error as e:
@@ -88,31 +101,27 @@ class ChatApp(QWidget):
             self.show_error_dialog("There was a name error.")
         except Exception as e:
             print(e)
-            self.show_error_dialog("There was a connection error.")        
+            self.show_error_dialog("There was a connection error.")
 
-        
-    """
-    Used to show a dialog
-    """
     def show_error_dialog(self, message):
+        """
+        Used to show a dialog
+        """
         error_dialog = QErrorMessage(self)
         error_dialog.showMessage(message)
 
-    """
-    Used to show the menu window after connecting successfully.
-    """
     def show_menu_window(self):
+        """
+        Used to show the menu window after connecting successfully.
+        """
         self.menu_window.show()
         self.hide()
 
-    """
-    Used to end the program.
-    """
-    def close_program(self):
-        quit()
-
 
 class ConnectedClientsWorker(QObject):
+    """
+    The worker used to handle server output.
+    """
     finished = pyqtSignal()
 
     def __init__(self, sock, chat_window, menu_window, parent=None):
@@ -124,7 +133,7 @@ class ConnectedClientsWorker(QObject):
 
     def run(self):
         """Long-running task."""
-        while self.connected:       
+        while self.connected:
             readable, writeable, exceptional = select.select([self.sock], [], [])
             for sock in readable:
                 if sock == self.sock:
@@ -151,47 +160,21 @@ class ConnectedClientsWorker(QObject):
 
     def stop(self):
         self.connected = False
-        send(self.sock, "END")     
+        send(self.sock, "END")
 
-"""
-The window that is shown after successfully connecting.
-"""
+
 class MenuWindow(QWidget):
+    """
+    The window that is shown after successfully connecting.
+    """
     def __init__(self, width, height, title, prev_window):
         super().__init__()
-        self.width = int(width/2)
+        self.width = int(width / 2)
         self.height = height
         self.title = title
         self.prev_window = prev_window
         self.sock = prev_window.sock
-        self.setup_menu_window()
-
-        # Get initial clients list.
-        send(self.sock, 'NAME: ' + self.prev_window.name)
-        receive(self.sock)
-        clients_list = receive_clients(self.sock)
-
-        self.update_connected_clients(clients_list)
-
-        self.chat_room_window = ChatRoomWindow(self.width, self.height, self.title, self)
-        self.group_chat_room_window = GroupChatRoomWindow(self.width, self.height, self.title, self)
-        
-        self.update_thread = QThread()
-        self.update_worker = ConnectedClientsWorker(self.sock, self.chat_room_window, self)
-        self.update_worker.moveToThread(self.update_thread)
-        self.update_thread.started.connect(self.update_worker.run)
-        self.update_worker.finished.connect(self.update_thread.quit)
-        self.update_worker.finished.connect(self.update_worker.deleteLater)
-        self.update_thread.finished.connect(self.update_worker.stop)
-        self.update_thread.finished.connect(self.update_thread.deleteLater)
-        self.update_thread.start()
-
-    """
-    Used to setup the GUI.
-    """
-    def setup_menu_window(self):
-        self.setWindowTitle(self.title)
-        self.resize(self.width, self.height)   
+        self.client_name = prev_window.name
 
         # Create components
         self.connected_clients_label = QLabel('Connected Clients', self)
@@ -203,17 +186,46 @@ class MenuWindow(QWidget):
         self.join_button = QPushButton('Join')
         self.close_button = QPushButton('Close')
 
-        # Add button functionality.
-        self.one_to_one_chat_button.clicked.connect(self.show_chat_window)
-        self.create_button.clicked.connect(self.create_button_clicked)
-        self.join_button.clicked.connect(self.join_button_clicked)
-        self.close_button.clicked.connect(self.show_connection_window)
-
         # Create layouts
         self.connected_clients_layout = QHBoxLayout()
         self.chat_rooms_layout = QHBoxLayout()
         self.chat_rooms_button_layout = QVBoxLayout()
         self.parent_layout = QVBoxLayout()
+
+        self.setup_menu_window()
+
+        # Get initial clients list.
+        send(self.sock, 'NAME: ' + self.prev_window.name)
+        receive(self.sock)
+        clients_list = receive_clients(self.sock)
+
+        self.update_connected_clients(clients_list)
+
+        self.chat_room_window = ChatRoomWindow(self.width, self.height, self.title, self)
+        self.group_chat_room_window = GroupChatRoomWindow(self.width, self.height, self.title, self)
+
+        self.update_thread = QThread()
+        self.update_worker = ConnectedClientsWorker(self.sock, self.chat_room_window, self)
+        self.update_worker.moveToThread(self.update_thread)
+        self.update_thread.started.connect(self.update_worker.run)
+        self.update_worker.finished.connect(self.update_thread.quit)
+        self.update_worker.finished.connect(self.update_worker.deleteLater)
+        self.update_thread.finished.connect(self.update_worker.stop)
+        self.update_thread.finished.connect(self.update_thread.deleteLater)
+        self.update_thread.start()
+
+    def setup_menu_window(self):
+        """
+        Used to setup the GUI.
+        """
+        self.setWindowTitle(self.title)
+        self.resize(self.width, self.height)
+
+        # Add button functionality.
+        self.one_to_one_chat_button.clicked.connect(self.show_chat_window)
+        self.create_button.clicked.connect(self.create_button_clicked)
+        self.join_button.clicked.connect(self.join_button_clicked)
+        self.close_button.clicked.connect(self.show_connection_window)
 
         # Add components to layouts
         self.connected_clients_layout.addWidget(self.connected_clients_list_widget)
@@ -229,96 +241,119 @@ class MenuWindow(QWidget):
         self.parent_layout.addWidget(self.close_button)
         self.setLayout(self.parent_layout)
 
-    """
-    Goes to the one to one chat window.
-    """
     def show_chat_window(self):
-        selectedUsers = self.connected_clients_list_widget.selectedItems()
-        if (len(selectedUsers) != 1):
+        """
+        Goes to the one to one chat window.
+        """
+        selected_users = self.connected_clients_list_widget.selectedItems()
+        if len(selected_users) != 1:
             self.show_error_dialog("Please selected a user from the list.")
-        elif selectedUsers[0].text().split("(")[1] == "me) ":
+        elif selected_users[0].text().split("(")[1] == "me) ":
             self.show_error_dialog("Please select a user other than yourself from the list.")
         else:
-            target_user = selectedUsers[0].text().split(" (")[0]
+            target_user = selected_users[0].text().split(" (")[0]
             self.chat_room_window.load_data(target_user)
             self.chat_room_window.show()
             self.hide()
 
     def create_button_clicked(self):
+        """
         send(self.sock, "CREATE_ROOM")
         self.room_title = receive(self.sock)
         self.members_list = receive_list(self.sock)
         self.group_chat_room_window.load_data(self.room_title, [], self.members_list)
+        """
         self.show_group_chat_window()
 
     def join_button_clicked(self):
-        self.show_group_chat_window()
+        selected_chatroom = self.chat_rooms_list_widget.selectedItems()
+        """
+        if (len(selected_chatroom) != 1):
+            self.show_error_dialog("Please selected a chat room from the list.")
+        else:
+            # If the user is invited, then they can join the room.
+            send(self.sock, "GET_INVITED_MEMBERS")
+            send(self.sock, str(selected_chatroom[0].text()))
+            members_list = list(receive_list(self.sock))
+            
+            invited = False
+            for member_name in members_list:
+                if member_name == self.client_name:
+                    invited = True
 
-    """
-    Used to show a dialog
-    """
+            if invited:    
+                self.show_group_chat_window()
+            else:
+                self.show_error_dialog("You need to be invited in order to join this chat room.")
+        """
+
     def show_error_dialog(self, message):
+        """
+        Used to show a dialog
+        """
         error_dialog = QErrorMessage(self)
         error_dialog.showMessage(message)
 
-    """
-    Goes to group chat window.
-    """
     def show_group_chat_window(self):
+        """
+        Goes to group chat window.
+        """
         self.group_chat_room_window.show()
         self.hide()
 
-    """
-    Goes to the previous window.
-    """
     def show_connection_window(self):
+        """
+        Goes to the previous window.
+        """
         self.update_worker.stop()
         self.prev_window.show()
         self.hide()
 
-    """
-    Updates the connected clients list widget.
-    """
     def update_connected_clients(self, clients_list):
+        """
+        Updates the connected clients list widget.
+        """
         self.connected_clients_list_widget.clear()
         for i in range(len(clients_list)):
             self.connected_clients_list_widget.insertItem(i, clients_list[i])
 
-    """
-    Updates the chat rooms list widget.
-    """
     def update_chat_rooms_list(self, chat_rooms_list):
+        """
+        Updates the chat rooms list widget.
+        """
         self.chat_rooms_list_widget.clear()
         for i in range(len(chat_rooms_list)):
             self.chat_rooms_list_widget.insertItem(i, chat_rooms_list[i])
 
 
-"""
-The window that is shown after pressing 1:1 chat button.
-"""
 class ChatRoomWindow(QWidget):
+    """
+    The window that is shown after pressing 1:1 chat button.
+    """
     def __init__(self, width, height, title, prev_window):
         super().__init__()
         self.width = width
         self.height = height
         self.title = title
         self.sock = prev_window.sock
+        self.target_username = None
         self.prev_window = prev_window
+
         self.setup_chat_room_window()
 
-    """
-    Used to setup the GUI.
-    """
     def setup_chat_room_window(self):
+        """
+        Used to setup the GUI.
+        """
         self.setWindowTitle(self.title)
-        self.resize(self.width, self.height)   
+        self.resize(self.width, self.height)
         self.setup_chat_room_layout()
         self.setLayout(self.chat_layout)
 
-    """
-    Used to setup the main layout.
-    """
     def setup_chat_room_layout(self):
+        """
+        Used to setup the main layout.
+        """
         # Create components.
         self.title_label = QLabel('Chat Title')
         self.chat_text_browser = QTextBrowser()
@@ -326,13 +361,13 @@ class ChatRoomWindow(QWidget):
         self.send_button = QPushButton('Send')
         self.close_button = QPushButton('Close')
 
-        # Button functionality
-        self.send_button.clicked.connect(self.send_message)
-        self.close_button.clicked.connect(self.show_menu_window)
-
         # Create layouts
         self.chat_input_layout = QHBoxLayout()
         self.chat_layout = QVBoxLayout()
+
+        # Button functionality
+        self.send_button.clicked.connect(self.send_message)
+        self.close_button.clicked.connect(self.show_menu_window)
 
         # Add components to layouts
         self.chat_layout.addWidget(self.title_label)
@@ -342,29 +377,29 @@ class ChatRoomWindow(QWidget):
         self.chat_layout.addLayout(self.chat_input_layout)
         self.chat_layout.addWidget(self.close_button)
 
-    """
-    Goes to the previous window.
-    """
     def show_menu_window(self):
+        """
+        Goes to the previous window.
+        """
         self.prev_window.show()
-        self.hide()  
+        self.hide()
 
-    """
-    Sends the one to one message to the server
-    and clears the input field.
-    """
     def send_message(self):
+        """
+        Sends the one to one message to the server
+        and clears the input field.
+        """
         send(self.sock, "MESSAGE")
-        send(self.sock, self.username)
+        send(self.sock, self.target_username)
         send(self.sock, self.chat_input.text())
         self.chat_input.clear()
 
-    """
-    Loads the data for the chat room.
-    """
     def load_data(self, username):
+        """
+        Loads the data for the chat room.
+        """
         self.title_label.setText("Chat with " + username)
-        self.username = username
+        self.target_username = username
         self.chat_text_browser.clear()
         """
         Currently does nothing but can call saved data
@@ -374,41 +409,41 @@ class ChatRoomWindow(QWidget):
         for message in message_list:
             self.chat_text_browser.append(message)
 
-    """
-    Adds a new message the text browser.
-    """
     def add_message(self, message):
+        """
+        Adds a new message the text browser.
+        """
         message_origin = message.split(" (")[0]
         if message_origin == "Me":
             self.chat_text_browser.append(message)
         try:
-            if message_origin == self.username:
+            if message_origin == self.target_username:
                 self.chat_text_browser.append(message)
         except AttributeError as e:
             print("hasn't joined the chat room yet.")
 
-"""
-The window that is shown after creating or joining a group chat.
-"""
+
 class GroupChatRoomWindow(ChatRoomWindow):
+    """
+    The window that is shown after creating or joining a group chat.
+    """
     def __init__(self, width, height, title, prev_window):
         super().__init__(width, height, title, prev_window)
+
+        self.client_name = prev_window.client_name
         self.invite_window = InviteWindow(self.width, self.height, self.title, self)
 
-    """
-    Used to move the window to the center of the screen.
-    """
     def setup_chat_room_window(self):
         self.width = int(self.width * 1.5)
         self.setWindowTitle(self.title)
-        self.resize(self.width, self.height)   
+        self.resize(self.width, self.height)
         self.setup_group_chat_room_layout()
         self.setLayout(self.group_chat_layout)
 
-    """
-    Used to setup the main layout.
-    """
     def setup_group_chat_room_layout(self):
+        """
+        Used to setup the main layout.
+        """
         self.setup_chat_room_layout()
 
         # Create components
@@ -416,12 +451,12 @@ class GroupChatRoomWindow(ChatRoomWindow):
         self.members_list_widget = QListWidget()
         self.invite_button = QPushButton('Invite')
 
-        # Button functionality
-        self.invite_button.clicked.connect(self.show_invite_window)
-
         # Setup new layouts
         self.members_layout = QVBoxLayout()
         self.group_chat_layout = QHBoxLayout()
+
+        # Button functionality
+        self.invite_button.clicked.connect(self.show_invite_window)
 
         # Add components to layout
         self.members_layout.addWidget(self.members_label)
@@ -430,21 +465,21 @@ class GroupChatRoomWindow(ChatRoomWindow):
         self.group_chat_layout.addLayout(self.chat_layout)
         self.group_chat_layout.addLayout(self.members_layout)
 
-    """
-    Used to show the invite window.
-    """
     def show_invite_window(self):
+        """
+        Used to show the invite window.
+        """
         self.invite_window.show()
         self.hide()
 
-    """
-    Loads the data for the chat room.
-    """
     def load_data(self, title, message_list, members_list):
+        """
+        Loads the data for the chat room.
+        """
         self.title_label.setText(title)
         self.update_messages(message_list)
         self.update_members(members_list)
-        
+
     def update_messages(self, message_list):
         self.chat_text_browser.clear()
         for message in message_list:
@@ -456,24 +491,16 @@ class GroupChatRoomWindow(ChatRoomWindow):
             self.members_list_widget.insertItem(i, members_list[i])
 
 
-"""
-The window that is shown after pressing the invite button.
-"""
 class InviteWindow(QWidget):
+    """
+    The window that is shown after pressing the invite button.
+    """
     def __init__(self, width, height, title, prev_window):
         super().__init__()
         self.width = int(width / 3)
         self.height = height
         self.title = title
         self.prev_window = prev_window
-        self.setup_invite_window()
-
-    """
-    Used to setup the GUI
-    """
-    def setup_invite_window(self):
-        self.setWindowTitle(self.title)
-        self.resize(self.width, self.height)   
 
         # Create components
         self.connected_clients_label = QLabel("Connected Clients", self)
@@ -481,12 +508,21 @@ class InviteWindow(QWidget):
         self.invite_button = QPushButton("Invite")
         self.cancel_button = QPushButton("Cancel")
 
-        # Button functionality
-        self.cancel_button.clicked.connect(self.show_group_chat_window)
-
         # Create layouts
         self.parent_layout = QVBoxLayout()
         self.button_layout = QHBoxLayout()
+
+        self.setup_invite_window()
+
+    def setup_invite_window(self):
+        """
+        Used to setup the GUI
+        """
+        self.setWindowTitle(self.title)
+        self.resize(self.width, self.height)
+
+        # Button functionality
+        self.cancel_button.clicked.connect(self.show_group_chat_window)
 
         # Add components to layout
         self.parent_layout.addWidget(self.connected_clients_label)
@@ -496,12 +532,13 @@ class InviteWindow(QWidget):
         self.parent_layout.addLayout(self.button_layout)
         self.setLayout(self.parent_layout)
 
-    """
-    Go to previous window.
-    """
     def show_group_chat_window(self):
+        """
+        Go to previous window.
+        """
         self.prev_window.show()
         self.hide()
+
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
