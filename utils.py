@@ -10,6 +10,7 @@ def send(channel, *args):
     channel.send(size)
     channel.send(buffer)
 
+
 def receive(channel):
     size = struct.calcsize("L")
     size = channel.recv(size)
@@ -21,6 +22,7 @@ def receive(channel):
     while len(buf) < size:
         buf = channel.recv(size - len(buf))
     return pickle.loads(buf)[0]
+
 
 def send_clients(channel, clients):
     buffer = pickle.dumps(clients)
@@ -51,6 +53,7 @@ def send_list(channel, clients):
     size = struct.pack("L", value)
     channel.send(size)
     channel.send(buffer)
+
 
 def receive_list(channel):
     size = struct.calcsize("L")
