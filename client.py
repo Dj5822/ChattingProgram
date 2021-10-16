@@ -363,8 +363,14 @@ class ChatRoomWindow(QWidget):
     Adds a new message the text browser.
     """
     def add_message(self, message):
-        print(message.split(" (")[0])
-        self.chat_text_browser.append(message)
+        message_origin = message.split(" (")[0]
+        if message_origin == "Me":
+            self.chat_text_browser.append(message)
+        try:
+            if message_origin == self.username:
+                self.chat_text_browser.append(message)
+        except AttributeError as e:
+            print("hasn't joined the chat room yet.")
 
 """
 The window that is shown after creating or joining a group chat.
