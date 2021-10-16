@@ -136,6 +136,9 @@ class ConnectedClientsWorker(QObject):
                     elif data == "CLIENT_LIST":
                         clients_list = receive_clients(self.sock)
                         self.menu_window.update_connected_clients(clients_list)
+                    elif data == "MESSAGE":
+                        message = receive(self.sock)
+                        print(message)
                     elif data == "END":
                         print("terminating connection.")
                         break
@@ -335,13 +338,16 @@ class ChatRoomWindow(QWidget):
         self.hide()  
 
     def send_message(self):
-        print("message sent")
+        send(self.sock, "MESSAGE")
+        send(self.sock, self.username)
+        send(self.sock, self.chat_input.text())
 
     """
     Loads the data for the chat room.
     """
     def load_data(self, username):
         self.title_label.setText("Chat with " + username)
+        self.username = username
         self.chat_text_browser.clear()
         message_list = []
         for message in message_list:

@@ -54,7 +54,6 @@ class ChatServer(object):
             time_message = ""
 
             current_client = '@'.join((client_data[1], client_data[0][0]))
-            print(self.get_client_name(client))
             if current_client == self.get_client_name(client):
                 connected_client_name = connected_client_name + " (me)"
 
@@ -69,6 +68,17 @@ class ChatServer(object):
 
             connected_clients_list.append(connected_client_name + " (" + time_message + ")")
         send_clients(client, connected_clients_list)  
+
+    # Gets a string with the format hour:minute
+    def get_current_time_stamp(self):
+        current_time = datetime.now()
+        return str(current_time.hour) + ":" + str(current_time.minute)
+    
+    # Gets the specific socket of a client with the matching name.
+    def get_client_socket(self, client_name):
+        for client_key in dict.keys(self.clientmap):
+            if self.clientmap[client_key][1] == client_name:
+                return client_key
 
     def run(self):
         inputs = [self.server, sys.stdin]
@@ -122,8 +132,19 @@ class ChatServer(object):
                             print("trying to end the client.")
                         # When a client wants to send a one to one message.
                         elif data == "MESSAGE":
+                            username = receive(sock)
                             message = receive(sock)
-                            print(message)
+
+                            target_sock = self.get_client_socket(username)
+                            current_time = self.get_current_time_stamp()
+
+                            # sends the message to the themselves
+                            send(sock, "MESSAGE")
+                            send(sock, username + "(" + current_time + "): " + message)
+                            
+                            # sends a message to the target
+                            send(target_sock, "MESSAGE")
+                            send(target_sock, username + "(" + current_time + "): " + message)
                         else:
                             # When a user goes offline.
                             print(f'Chat server: {sock.fileno()} hung up')
