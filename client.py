@@ -115,9 +115,10 @@ class ChatApp(QWidget):
 class ConnectedClientsWorker(QObject):
     finished = pyqtSignal()
 
-    def __init__(self, sock, menu_window, parent=None):
+    def __init__(self, sock, chat_window, menu_window, parent=None):
         super().__init__(parent=parent)
         self.sock = sock
+        self.chat_window = chat_window
         self.menu_window = menu_window
         self.connected = True
 
@@ -138,7 +139,7 @@ class ConnectedClientsWorker(QObject):
                         self.menu_window.update_connected_clients(clients_list)
                     elif data == "MESSAGE":
                         message = receive(self.sock)
-                        print(message)
+                        self.chat_window.add_message(message)
                     elif data == "END":
                         print("terminating connection.")
                         break
@@ -169,9 +170,12 @@ class MenuWindow(QWidget):
 
         self.update_connected_clients(clients_list)
         self.update_chat_rooms_list(["test chat room 1", "test chat room 2"])
+
+        self.chat_room_window = ChatRoomWindow(self.width, self.height, self.title, self)
+        self.group_chat_room_window = GroupChatRoomWindow(self.width, self.height, self.title, self)
         
         self.update_thread = QThread()
-        self.update_worker = ConnectedClientsWorker(self.sock, self)
+        self.update_worker = ConnectedClientsWorker(self.sock, self.chat_room_window, self)
         self.update_worker.moveToThread(self.update_thread)
         self.update_thread.started.connect(self.update_worker.run)
         self.update_worker.finished.connect(self.update_thread.quit)
@@ -179,9 +183,6 @@ class MenuWindow(QWidget):
         self.update_thread.finished.connect(self.update_worker.stop)
         self.update_thread.finished.connect(self.update_thread.deleteLater)
         self.update_thread.start()
-
-        self.chat_room_window = ChatRoomWindow(self.width, self.height, self.title, self)
-        self.group_chat_room_window = GroupChatRoomWindow(self.width, self.height, self.title, self)
 
     """
     Used to setup the GUI.
@@ -337,10 +338,15 @@ class ChatRoomWindow(QWidget):
         self.prev_window.show()
         self.hide()  
 
+    """
+    Sends the one to one message to the server
+    and clears the input field.
+    """
     def send_message(self):
         send(self.sock, "MESSAGE")
         send(self.sock, self.username)
         send(self.sock, self.chat_input.text())
+        self.chat_input.clear()
 
     """
     Loads the data for the chat room.
@@ -353,6 +359,12 @@ class ChatRoomWindow(QWidget):
         for message in message_list:
             self.chat_text_browser.append(message)
 
+    """
+    Adds a new message the text browser.
+    """
+    def add_message(self, message):
+        print(message.split(" (")[0])
+        self.chat_text_browser.append(message)
 
 """
 The window that is shown after creating or joining a group chat.

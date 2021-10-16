@@ -140,11 +140,11 @@ class ChatServer(object):
 
                             # sends the message to the themselves
                             send(sock, "MESSAGE")
-                            send(sock, username + "(" + current_time + "): " + message)
+                            send(sock, "Me (" + current_time + "): " + message)
                             
                             # sends a message to the target
                             send(target_sock, "MESSAGE")
-                            send(target_sock, username + "(" + current_time + "): " + message)
+                            send(target_sock, self.clientmap[sock][1] + " (" + current_time + "): " + message)
                         else:
                             # When a user goes offline.
                             print(f'Chat server: {sock.fileno()} hung up')
