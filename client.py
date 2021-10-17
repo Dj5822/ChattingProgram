@@ -152,7 +152,6 @@ class ConnectedClientsWorker(QObject):
                         self.chat_window.add_message(message)
                     elif data == "CREATE_ROOM":
                         self.group_chat_window.room_title = receive(self.sock)
-                        self.clear_group_messages.emit()
                         self.group_chat_window.load_group_chat([self.menu_window.client_name + " (Host)"])
                     elif data == "UPDATE_ROOMS_LIST":
                         room_list = receive_list(self.sock)
@@ -170,6 +169,7 @@ class ConnectedClientsWorker(QObject):
                             self.group_chat_window.load_group_chat(members_list)
                             self.menu_window.show_group_chat_window()
                         else:
+                            self.show_error_message.emit()
                     elif data == "UPDATE_INVITE_WINDOW":
                         invitable_clients_list = receive_list(self.sock)
                         self.invite_window.update_clients_list(invitable_clients_list)
@@ -295,13 +295,13 @@ class MenuWindow(QWidget):
             self.hide()
 
     def create_button_clicked(self):
-        self.group_chat_room_window.clear_group_messages()
         send(self.sock, "CREATE_ROOM")
+        self.group_chat_room_window.clear_group_messages()
         self.show_group_chat_window()
 
     def join_button_clicked(self):
-        self.group_chat_room_window.clear_group_messages()
         selected_chatroom = self.chat_rooms_list_widget.selectedItems()
+        self.group_chat_room_window.clear_group_messages()
         if len(selected_chatroom) != 1:
             self.show_error_dialog("Please selected a chat room from the list.")
         else:
