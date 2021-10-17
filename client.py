@@ -122,7 +122,6 @@ class ConnectedClientsWorker(QObject):
     """
     finished = pyqtSignal()
     show_error_message = pyqtSignal()
-    clear_group_messages = pyqtSignal()
 
     def __init__(self, sock, invite_window, chat_window, group_chat_window, menu_window, parent=None):
         super().__init__(parent=parent)
@@ -161,7 +160,6 @@ class ConnectedClientsWorker(QObject):
                     elif data == "JOIN_ROOM":
                         # get all the members of the chat room.
                         members_list = list(receive_list(self.sock))
-                        self.clear_group_messages.emit()
 
                         invited = False
                         for member_name in members_list:
@@ -172,7 +170,6 @@ class ConnectedClientsWorker(QObject):
                             self.group_chat_window.load_group_chat(members_list)
                             self.menu_window.show_group_chat_window()
                         else:
-                            self.show_error_message.emit()
                     elif data == "UPDATE_INVITE_WINDOW":
                         invitable_clients_list = receive_list(self.sock)
                         self.invite_window.update_clients_list(invitable_clients_list)
@@ -253,7 +250,6 @@ class MenuWindow(QWidget):
         self.update_thread.finished.connect(self.update_thread.deleteLater)
         self.update_worker.show_error_message.connect(lambda: self.show_error_dialog("You need to be invited "
                                                                                      "to join the room."))
-        self.update_worker.clear_group_messages.connect(self.group_chat_room_window.clear_group_messages)
         self.update_thread.start()
 
     def setup_menu_window(self):
@@ -299,10 +295,12 @@ class MenuWindow(QWidget):
             self.hide()
 
     def create_button_clicked(self):
+        self.group_chat_room_window.clear_group_messages()
         send(self.sock, "CREATE_ROOM")
         self.show_group_chat_window()
 
     def join_button_clicked(self):
+        self.group_chat_room_window.clear_group_messages()
         selected_chatroom = self.chat_rooms_list_widget.selectedItems()
         if len(selected_chatroom) != 1:
             self.show_error_dialog("Please selected a chat room from the list.")
