@@ -223,7 +223,7 @@ class ChatServer(object):
                                 destination_sock = self.get_client_socket(member_name)
                                 send(destination_sock, "GROUP_MESSAGE")
                                 send(destination_sock, room_name)
-                                send(destination_sock, member_name + " (" + current_time + "): " + message)
+                                send(destination_sock, self.client_map[sock][1] + " (" + current_time + "): " + message)
                         # When a user goes offline.
                         else:
                             print(f'Chat server: {sock.fileno()} hung up')
