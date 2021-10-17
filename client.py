@@ -161,6 +161,7 @@ class ConnectedClientsWorker(QObject):
                     elif data == "JOIN_ROOM":
                         # get all the members of the chat room.
                         members_list = list(receive_list(self.sock))
+                        self.clear_group_messages.emit()
 
                         invited = False
                         for member_name in members_list:
