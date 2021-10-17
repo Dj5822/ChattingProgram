@@ -86,7 +86,6 @@ class ChatApp(QWidget):
             self.host = self.ip_address_textbox.text()
             self.port = int(self.port_textbox.text())
             self.name = self.nickname_textbox.text()
-
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.sock = self.context.wrap_socket(self.sock, server_hostname=self.host)
             self.sock.connect((self.host, self.port))
@@ -295,13 +294,14 @@ class MenuWindow(QWidget):
             self.hide()
 
     def create_button_clicked(self):
+        self.group_chat_room_window.clear_chat()
         send(self.sock, "CREATE_ROOM")
         self.show_group_chat_window()
 
     def join_button_clicked(self):
         selected_chatroom = self.chat_rooms_list_widget.selectedItems()
         if len(selected_chatroom) != 1:
-            self.show_error_dialog("Please selected a chat room from the list.")
+            self.show_error_dialog("Please select a chat room from the list.")
         else:
             # If the user is invited, then they can join the room.
             send(self.sock, "JOIN_ROOM")
@@ -406,6 +406,7 @@ class ChatRoomWindow(QWidget):
         """
         Goes to the previous window.
         """
+        self.chat_text_browser.clear()
         self.prev_window.show()
         self.hide()
 
@@ -459,6 +460,7 @@ class GroupChatRoomWindow(ChatRoomWindow):
         self.members_label = QLabel('Members', self)
         self.members_list_widget = QListWidget()
         self.invite_button = QPushButton('Invite')
+        self.chat_text_browser = QTextBrowser()
 
         # Setup new layouts
         self.members_layout = QVBoxLayout()
@@ -532,6 +534,10 @@ class GroupChatRoomWindow(ChatRoomWindow):
         Adds a new message the text browser.
         """
         self.chat_text_browser.append(message)
+
+    def clear_chat(self):
+        print("trying to clear")
+        self.chat_text_browser.clear()
 
 
 class InviteWindow(QWidget):
