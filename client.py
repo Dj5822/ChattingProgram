@@ -122,6 +122,7 @@ class ConnectedClientsWorker(QObject):
     """
     finished = pyqtSignal()
     show_error_message = pyqtSignal()
+    clear_group_messages = pyqtSignal()
 
     def __init__(self, sock, invite_window, chat_window, group_chat_window, menu_window, parent=None):
         super().__init__(parent=parent)
@@ -152,6 +153,7 @@ class ConnectedClientsWorker(QObject):
                         self.chat_window.add_message(message)
                     elif data == "CREATE_ROOM":
                         self.group_chat_window.room_title = receive(self.sock)
+                        self.clear_group_messages.emit()
                         self.group_chat_window.load_group_chat([self.menu_window.client_name + " (Host)"])
                     elif data == "UPDATE_ROOMS_LIST":
                         room_list = receive_list(self.sock)
@@ -250,6 +252,7 @@ class MenuWindow(QWidget):
         self.update_thread.finished.connect(self.update_thread.deleteLater)
         self.update_worker.show_error_message.connect(lambda: self.show_error_dialog("You need to be invited "
                                                                                      "to join the room."))
+        self.update_worker.clear_group_messages.connect(self.group_chat_room_window.clear_group_messages)
         self.update_thread.start()
 
     def setup_menu_window(self):
@@ -511,11 +514,6 @@ class GroupChatRoomWindow(ChatRoomWindow):
         for i in range(len(members_list)):
             self.members_list_widget.insertItem(i, members_list[i])
 
-    def update_messages(self, message_list):
-        self.chat_text_browser.clear()
-        for message in message_list:
-            self.chat_text_browser.append(message)
-
     def update_members(self, members_list):
         self.members_list_widget.clear()
         for i in range(len(members_list)):
@@ -532,6 +530,9 @@ class GroupChatRoomWindow(ChatRoomWindow):
         Adds a new message the text browser.
         """
         self.chat_text_browser.append(message)
+
+    def clear_group_messages(self):
+        self.chat_text_browser.clear()
 
 
 class InviteWindow(QWidget):
