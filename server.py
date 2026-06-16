@@ -20,10 +20,9 @@ class ChatServer(object):
         self.chat_rooms_count = 0
         self.outputs = []  # list output sockets
 
-        self.context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
+        self.context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         self.context.load_cert_chain(certfile="cert.pem", keyfile="cert.pem")
-        self.context.load_verify_locations('cert.pem')
-        self.context.set_ciphers('AES128-SHA')
+        self.context.verify_mode = ssl.CERT_NONE
 
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)

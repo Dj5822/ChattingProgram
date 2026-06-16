@@ -1,8 +1,6 @@
 import sys
 import socket
 import select
-import time
-import typing
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import QObject, QThread, pyqtSignal
 from utils import *
@@ -47,7 +45,9 @@ class ChatApp(QWidget):
         self.port = None
         self.name = ''
         self.sock = None
-        self.context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
+        self.context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        self.context.load_verify_locations('cert.pem')
+        self.context.check_hostname = False
         self.menu_window = None
 
     def setup_connection_window(self):
