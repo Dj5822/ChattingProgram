@@ -1,4 +1,4 @@
-## Python Chatting Program
+# Python Chatting Program
 
 Note that this program was designed to be used on Linux.
 You need to use WSL on Windows to run this program.
@@ -19,4 +19,4 @@ Port: 9988
 Nickname: [SomeUniqueName]
 ```
 
-Where SomeUniqueName is a name that is unique.
+Where [SomeUniqueName] is a name that is unique.
